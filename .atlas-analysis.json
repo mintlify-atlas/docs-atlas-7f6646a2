@@ -1,0 +1,99 @@
+{
+  "projectType": "saas",
+  "projectName": "Hack Western Platform",
+  "projectDescription": "Full-stack hackathon management platform for Hack Western events with applications, reviews, and scavenger hunts",
+  "theme": "almond",
+  "primaryColor": "#533e7b",
+  "lightColor": "#cec5db",
+  "darkColor": "#ac9cc9",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": ["introduction", "getting-started"]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/setup",
+              "development/database",
+              "development/environment",
+              "development/testing"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/overview",
+              "architecture/tech-stack",
+              "architecture/database-schema",
+              "architecture/authentication"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/applications",
+              "features/review-system",
+              "features/scavenger-hunt",
+              "features/qr-codes",
+              "features/apple-wallet"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "tRPC Routers",
+            "pages": [
+              "api/application",
+              "api/auth",
+              "api/review",
+              "api/scavenger-hunt",
+              "api/qr-code"
+            ]
+          },
+          {
+            "group": "Database",
+            "pages": [
+              "api/schema",
+              "api/migrations"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Hacker application system with multi-step forms",
+    "Application review portal for organizers",
+    "Scavenger hunt game with points and rewards",
+    "QR code generation and scanning",
+    "Apple Wallet pass generation",
+    "NextAuth authentication with Google OAuth",
+    "Drizzle ORM with PostgreSQL database"
+  ],
+  "publicApiSurface": [
+    "application.create",
+    "application.update",
+    "application.get",
+    "application.submit",
+    "auth.register",
+    "auth.login",
+    "auth.resetPassword",
+    "review.create",
+    "review.update",
+    "review.getAll",
+    "scavengerHunt.scan",
+    "scavengerHunt.getItems",
+    "scavengerHunt.redeemReward",
+    "scavengerHunt.getLeaderboard",
+    "qrRouter.generateHackerQR",
+    "qrRouter.generateAppleWalletPass"
+  ]
+}
