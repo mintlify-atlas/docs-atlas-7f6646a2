@@ -1,0 +1,493 @@
+---
+title: Database schema
+description: Complete database schema reference for the Hack Western Platform
+---
+
+This page documents the complete database schema for the Hack Western Platform, including all tables, columns, relationships, and enums.
+
+## Table prefix
+
+All tables use the prefix `hw_` (Hack Western). This prefix is configured in the schema and can be changed for different years.
+
+```typescript
+const TABLE_PREFIX = "hw";
+export const createTable = pgTableCreator((name) => `${TABLE_PREFIX}_${name}`);
+```
+
+## Enums
+
+### application_status
+
+The status of a hacker application, from when it's first started to final decision.
+
+- `IN_PROGRESS` - Application is being filled out
+- `PENDING_REVIEW` - Submitted and waiting for review
+- `IN_REVIEW` - Currently being reviewed by organizers
+- `ACCEPTED` - Application accepted
+- `REJECTED` - Application rejected
+- `WAITLISTED` - Application waitlisted
+- `DECLINED` - Applicant declined their acceptance
+
+### user_type
+
+The type of user account.
+
+- `hacker` - Participant/applicant
+- `organizer` - Event organizer with admin access
+- `sponsor` - Sponsor representative
+
+### avatar_colour
+
+Avatar color options for hacker profiles.
+
+- `red`
+- `orange`
+- `yellow`
+- `green`
+- `blue`
+- `purple`
+- `pink`
+
+### level_of_study
+
+The school/university year that the hacker applicant is in.
+
+- `Less than Secondary / High School`
+- `Secondary / High School`
+- `Undergraduate University (2 year - community college etc.)`
+- `Undergraduate University (3+ year)`
+- `Graduate University (Masters, Professional, Doctoral, etc)`
+- `Code School / Bootcamp`
+- `Other Vocational / Trade Program or Apprenticeship`
+- `Post Doctorate`
+- `Other`
+- `Not currently a student`
+- `Prefer not to answer`
+
+### major
+
+The subject that the applicant is mainly studying.
+
+- `Computer Science`
+- `Computer Engineering`
+- `Software Engineering`
+- `Other Engineering Discipline`
+- `Information Systems`
+- `Information Technology`
+- `System Administration`
+- `Natural Sciences (Biology, Chemistry, Physics, etc.)`
+- `Mathematics/Statistics`
+- `Web Development/Web Design`
+- `Business Administration`
+- `Humanities`
+- `Social Science`
+- `Fine Arts/Performing Arts`
+- `Other`
+
+### num_of_hackathons
+
+The number of hackathons the hacker applicant has attended before.
+
+- `0`
+- `1-3`
+- `4-6`
+- `7+`
+
+### gender
+
+The gender identity that the applicant identifies with.
+
+- `Female`
+- `Male`
+- `Non-Binary`
+- `Other`
+- `Prefer not to answer`
+
+### race/ethnicity
+
+The race/ethnicity of the applicant.
+
+- `American Indian or Alaskan Native`
+- `Asian / Pacific Islander`
+- `Black or African American`
+- `Hispanic`
+- `White / Caucasian`
+- `Multiple ethnicity / Other`
+- `Prefer not to answer`
+
+### sexual_orientation
+
+The sexual orientation that the applicant identifies with.
+
+- `Asexual / Aromantic`
+- `Pansexual, Demisexual or Omnisexual`
+- `Bisexual`
+- `Queer`
+- `Gay / Lesbian`
+- `Heterosexual / Straight`
+- `Other`
+- `Prefer not to answer`
+
+### country
+
+Country of residence options.
+
+- `Canada`
+- `United States`
+- `India`
+- `Other`
+
+## Tables
+
+### users
+
+Core user accounts table for all users (hackers, organizers, sponsors).
+
+**Table name:** `hw_user`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | varchar(255) | PRIMARY KEY, NOT NULL | Unique user identifier |
+| name | varchar(255) | | User's display name |
+| password | varchar(255) | | Hashed password for credential auth |
+| email | varchar(255) | NOT NULL | User's email address |
+| emailVerified | timestamp | DEFAULT CURRENT_TIMESTAMP | Email verification timestamp |
+| image | varchar(255) | | Profile image URL |
+| type | user_type | DEFAULT 'hacker' | User account type |
+| scavengerHuntEarned | integer | DEFAULT 0 | Total points earned in scavenger hunt |
+| scavengerHuntBalance | integer | DEFAULT 0 | Current point balance for redemptions |
+
+**Indexes:**
+- `user_scavenger_hunt_earned_idx` on `scavengerHuntEarned`
+- `user_scavenger_hunt_balance_idx` on `scavengerHuntBalance`
+
+**Relationships:**
+- One-to-many with `accounts` (NextAuth OAuth accounts)
+- One-to-one with `applications`
+
+### applications
+
+Hacker applications with all form data and status tracking.
+
+**Table name:** `hw_application`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| userId | varchar(255) | PRIMARY KEY, NOT NULL, FK → users.id | User who submitted this application |
+| createdAt | timestamp(3) | NOT NULL, DEFAULT now() | Application creation timestamp |
+| updatedAt | timestamp(3) | NOT NULL, DEFAULT now() | Last update timestamp |
+| status | application_status | NOT NULL, DEFAULT 'IN_PROGRESS' | Current application status |
+
+**Avatar fields:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| avatarColour | avatar_colour | | Avatar color selection |
+| avatarFace | integer | | Avatar face ID |
+| avatarLeftHand | integer | | Avatar left hand item ID |
+| avatarRightHand | integer | | Avatar right hand item ID |
+| avatarHat | integer | | Avatar hat item ID |
+
+**Personal information:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| firstName | varchar(255) | | Applicant's first name |
+| lastName | varchar(255) | | Applicant's last name |
+| age | integer | | Applicant's age (must be 18+) |
+| phoneNumber | varchar(42) | | Phone number with frontend validation |
+| countryOfResidence | country | | Country of residence |
+
+**Education fields:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| school | varchar(255) | | School/university name |
+| levelOfStudy | level_of_study | | Current education level |
+| major | major | | Field of study |
+
+**Experience fields:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| attendedBefore | boolean | | Has attended Hack Western before |
+| numOfHackathons | num_of_hackathons | | Number of hackathons attended |
+
+**Story questions:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| question1 | text | | Response to application question 1 |
+| question2 | text | | Response to application question 2 |
+| question3 | text | | Response to application question 3 |
+
+**Profile links:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| resumeLink | varchar(2048) | | Link to resume |
+| githubLink | varchar(2048) | | GitHub profile URL |
+| linkedInLink | varchar(2048) | | LinkedIn profile URL |
+| otherLink | varchar(2048) | | Additional portfolio/project link |
+
+**Agreement fields:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| agreeCodeOfConduct | boolean | NOT NULL, DEFAULT false | Agreed to code of conduct (required) |
+| agreeShareWithSponsors | boolean | NOT NULL, DEFAULT false | Agreed to share info with sponsors (optional) |
+| agreeShareWithMLH | boolean | NOT NULL, DEFAULT false | Agreed to MLH data sharing (required) |
+| agreeEmailsFromMLH | boolean | NOT NULL, DEFAULT false | Agreed to MLH emails (optional) |
+| agreeWillBe18 | boolean | NOT NULL, DEFAULT false | Confirmed will be 18+ at event (required) |
+
+**Optional demographic questions:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| underrepGroup | boolean | | Identifies as underrepresented in tech |
+| gender | gender | | Gender identity |
+| ethnicity | race/ethnicity | | Race/ethnicity |
+| sexualOrientation | sexual_orientation | | Sexual orientation |
+
+**Canvas data:**
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| canvasData | jsonb | NOT NULL, DEFAULT '{}' | Creative canvas drawing data |
+
+**Indexes:**
+- `user_id_idx` on `userId`
+
+**Foreign key constraints:**
+- `userId` references `users.id` (ON DELETE CASCADE)
+
+**Relationships:**
+- One-to-one with `users`
+- One-to-many with `reviews`
+
+### reviews
+
+Organizer reviews of hacker applications for the review portal.
+
+**Table name:** `hw_review`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| reviewerUserId | varchar(255) | PRIMARY KEY (with applicantUserId), NOT NULL, FK → users.id | Organizer conducting the review |
+| applicantUserId | varchar(255) | PRIMARY KEY (with reviewerUserId), NOT NULL, FK → users.id, FK → applications.userId | Applicant being reviewed |
+| createdAt | timestamp(3) | NOT NULL, DEFAULT now() | Review creation timestamp |
+| updatedAt | timestamp(3) | NOT NULL, DEFAULT now() | Last update timestamp |
+| originalityRating | smallint | DEFAULT 0 | Originality score |
+| technicalityRating | smallint | DEFAULT 0 | Technical skills score |
+| passionRating | smallint | DEFAULT 0 | Passion/enthusiasm score |
+| comments | text | | Reviewer's comments |
+| completed | boolean | DEFAULT false | Review completion status |
+| referral | boolean | DEFAULT false | Marked for referral/special consideration |
+
+**Composite primary key:** (`reviewerUserId`, `applicantUserId`)
+
+**Indexes:**
+- `applicant_user_id_idx` on `applicantUserId`
+
+**Relationships:**
+- Many-to-one with `users` (reviewer)
+- Many-to-one with `users` (applicant)
+- Many-to-one with `applications`
+
+### preregistrations
+
+Email list for pre-registration before applications open.
+
+**Table name:** `hw_preregistration`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | serial | PRIMARY KEY | Auto-incrementing ID |
+| createdAt | timestamp(3) | NOT NULL, DEFAULT now() | Registration timestamp |
+| email | varchar(320) | NOT NULL, UNIQUE | Email address |
+
+### accounts
+
+NextAuth OAuth account connections (Google, GitHub, etc.).
+
+**Table name:** `hw_account`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| userId | varchar(255) | NOT NULL, FK → users.id | User this account belongs to |
+| type | varchar(255) | NOT NULL | Account type (oauth, email, etc.) |
+| provider | varchar(255) | PRIMARY KEY (with providerAccountId), NOT NULL | OAuth provider (google, github, etc.) |
+| providerAccountId | varchar(255) | PRIMARY KEY (with provider), NOT NULL | Provider's user ID |
+| refresh_token | text | | OAuth refresh token |
+| access_token | text | | OAuth access token |
+| expires_at | integer | | Token expiration timestamp |
+| token_type | varchar(255) | | Token type (Bearer, etc.) |
+| scope | varchar(255) | | OAuth scopes granted |
+| id_token | text | | OpenID Connect ID token |
+| session_state | varchar(255) | | OAuth session state |
+
+**Composite primary key:** (`provider`, `providerAccountId`)
+
+**Indexes:**
+- `account_userId_idx` on `userId`
+
+**Relationships:**
+- Many-to-one with `users`
+
+### sessions
+
+NextAuth session storage.
+
+**Table name:** `hw_session`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| sessionToken | varchar(255) | PRIMARY KEY, NOT NULL | Unique session token |
+| userId | varchar(255) | NOT NULL, FK → users.id | User this session belongs to |
+| expires | timestamp | NOT NULL | Session expiration timestamp |
+
+**Indexes:**
+- `session_userId_idx` on `userId`
+
+**Relationships:**
+- Many-to-one with `users`
+
+### verificationTokens
+
+Email verification tokens for NextAuth.
+
+**Table name:** `hw_verification_token`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| identifier | varchar(255) | PRIMARY KEY (with token), NOT NULL | Email or user identifier |
+| token | varchar(255) | PRIMARY KEY (with identifier), NOT NULL | Verification token |
+| expires | timestamp | NOT NULL | Token expiration timestamp |
+
+**Composite primary key:** (`identifier`, `token`)
+
+### resetPasswordTokens
+
+Password reset tokens for credential-based authentication.
+
+**Table name:** `hw_reset_password_token`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| userId | varchar(255) | PRIMARY KEY, FK → users.id | User requesting password reset |
+| token | varchar(255) | | Reset token |
+| expires | timestamp | NOT NULL | Token expiration timestamp |
+
+### scavengerHuntItems
+
+Items/codes that can be scanned in the scavenger hunt.
+
+**Table name:** `hw_scavenger_hunt_item`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | serial | PRIMARY KEY | Auto-incrementing ID |
+| code | varchar(12) | NOT NULL, UNIQUE | Scannable code (QR code content) |
+| points | smallint | NOT NULL, DEFAULT 1 | Points awarded for scanning |
+| description | text | | Item description |
+| deletedAt | timestamp(3) | | Soft delete timestamp |
+
+### scavengerHuntScans
+
+Records of items scanned by users.
+
+**Table name:** `hw_scavenger_hunt_scan`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| userId | varchar(255) | PRIMARY KEY (with itemId), NOT NULL, FK → users.id | User who scanned the item |
+| scannerId | varchar(255) | NOT NULL, FK → users.id | Organizer who facilitated the scan |
+| itemId | integer | PRIMARY KEY (with userId), NOT NULL, FK → scavengerHuntItems.id | Item that was scanned |
+| createdAt | timestamp(3) | NOT NULL, DEFAULT now() | Scan timestamp |
+
+**Composite primary key:** (`userId`, `itemId`)
+
+**Indexes:**
+- `scan_user_idx` on `userId`
+- `scan_scanner_idx` on `scannerId`
+
+### scavengerHuntRewards
+
+Rewards that can be redeemed with scavenger hunt points.
+
+**Table name:** `hw_scavenger_hunt_reward`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | serial | PRIMARY KEY | Auto-incrementing ID |
+| name | varchar(255) | NOT NULL | Reward name |
+| costPoints | smallint | NOT NULL | Point cost to redeem |
+| description | text | | Reward description |
+| quantity | integer | | Available quantity (null = unlimited) |
+
+### scavengerHuntRedemptions
+
+Records of rewards redeemed by users.
+
+**Table name:** `hw_scavenger_hunt_redemption`
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | serial | PRIMARY KEY | Auto-incrementing ID |
+| userId | varchar(255) | NOT NULL, FK → users.id | User who redeemed the reward |
+| rewardId | integer | NOT NULL, FK → scavengerHuntRewards.id | Reward that was redeemed |
+| createdAt | timestamp(3) | NOT NULL, DEFAULT now() | Redemption timestamp |
+
+**Indexes:**
+- `redemption_user_idx` on `userId`
+
+## Schema definition
+
+The complete schema is defined in `src/server/db/schema.ts` using Drizzle ORM:
+
+```typescript
+import { relations, sql } from "drizzle-orm";
+import {
+  boolean,
+  index,
+  serial,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTableCreator,
+  primaryKey,
+  smallint,
+  text,
+  timestamp,
+  varchar,
+} from "drizzle-orm/pg-core";
+
+const TABLE_PREFIX = "hw";
+export const createTable = pgTableCreator((name) => `${TABLE_PREFIX}_${name}`);
+```
+
+## Relationships overview
+
+### User-centric relationships
+
+- **users** → **accounts**: One-to-many (a user can have multiple OAuth providers)
+- **users** → **sessions**: One-to-many (a user can have multiple active sessions)
+- **users** → **applications**: One-to-one (each user has one application)
+- **users** → **reviews** (as reviewer): One-to-many (organizers review many applications)
+- **users** → **reviews** (as applicant): One-to-many (applications receive many reviews)
+
+### Application review workflow
+
+- **applications** → **users**: Many-to-one (application belongs to one user)
+- **applications** → **reviews**: One-to-many (application can have multiple reviews)
+- **reviews** → **users** (reviewer): Many-to-one (review by one organizer)
+- **reviews** → **users** (applicant): Many-to-one (review for one applicant)
+- **reviews** → **applications**: Many-to-one (review for one application)
+
+### Scavenger hunt relationships
+
+- **scavengerHuntScans** → **users** (userId): Many-to-one (scan by one user)
+- **scavengerHuntScans** → **users** (scannerId): Many-to-one (facilitated by one organizer)
+- **scavengerHuntScans** → **scavengerHuntItems**: Many-to-one (scan of one item)
+- **scavengerHuntRedemptions** → **users**: Many-to-one (redemption by one user)
+- **scavengerHuntRedemptions** → **scavengerHuntRewards**: Many-to-one (redemption of one reward)

@@ -1,0 +1,214 @@
+---
+title: Welcome to Hack Western Platform
+description: Comprehensive hackathon management system for organizers and participants
+mode: custom
+---
+
+<div className="relative overflow-hidden bg-gradient-to-br from-[#533e7b] via-[#6b4f9e] to-[#ac9cc9] dark:from-[#0f1117] dark:via-[#1a1d27] dark:to-[#242838] py-20">
+  <div className="max-w-6xl mx-auto px-6 lg:px-8">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      <div className="lg:col-span-7">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white dark:text-gray-100 mb-6">
+          Hack Western Platform Documentation
+        </h1>
+        <p className="text-lg sm:text-xl text-white/90 dark:text-gray-300 max-w-2xl mb-8">
+          A full-stack hackathon management platform built with Next.js, tRPC, and Drizzle ORM. Manage applications, reviews, and engage participants with interactive features.
+        </p>
+        <div className="flex flex-wrap gap-4">
+          <a 
+            href="/getting-started"
+            className="inline-flex items-center px-6 py-3 rounded-lg bg-white dark:bg-[#1a1d27] text-[#533e7b] dark:text-white font-semibold hover:bg-gray-100 dark:hover:bg-[#242838] transition-colors no-underline"
+          >
+            Get Started
+            <svg className="ml-2 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </a>
+          <a 
+            href="/api/application"
+            className="inline-flex items-center px-6 py-3 rounded-lg border-2 border-white/30 dark:border-gray-600 bg-white/10 dark:bg-white/5 text-white dark:text-gray-200 font-semibold hover:bg-white/20 dark:hover:bg-white/10 hover:border-white/50 dark:hover:border-gray-500 transition-colors no-underline"
+          >
+            Explore API
+          </a>
+        </div>
+      </div>
+      <div className="lg:col-span-5 hidden lg:block">
+        <div className="relative">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#9B7DE1]/20 to-transparent rounded-2xl blur-3xl"></div>
+          <div className="relative bg-white/10 dark:bg-[#1a1d27]/50 backdrop-blur-sm border border-white/20 dark:border-[#27272a] rounded-2xl p-8">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-[#9B7DE1] flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-white dark:text-gray-200 font-semibold">Application System</div>
+                  <div className="text-white/70 dark:text-gray-400 text-sm">Multi-step forms with canvas</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-[#ac9cc9] flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-white dark:text-gray-200 font-semibold">Review Portal</div>
+                  <div className="text-white/70 dark:text-gray-400 text-sm">Collaborative review system</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg bg-[#533e7b] flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-white dark:text-gray-200 font-semibold">Scavenger Hunt</div>
+                  <div className="text-white/70 dark:text-gray-400 text-sm">Points and rewards system</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">Quick start</h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">Get your development environment running in minutes</p>
+  
+  <Steps>
+    <Step title="Clone the repository">
+      Clone the Hack Western repository and navigate into the directory.
+      
+      ```bash
+      git clone https://github.com/hackwestern/hackwestern.git
+      cd hackwestern
+      ```
+    </Step>
+    
+    <Step title="Install dependencies">
+      Install all required packages using npm.
+      
+      ```bash
+      npm install
+      ```
+      
+      <Note>Node.js version 21 or higher is required. We recommend using [nvm](https://github.com/nvm-sh/nvm) to manage Node versions.</Note>
+    </Step>
+    
+    <Step title="Set up environment variables">
+      Get a copy of `.env` from a web lead or create your own. Generate a `NEXTAUTH_SECRET` with:
+      
+      ```bash
+      openssl rand -base64 32
+      ```
+      
+      Add this and other required variables to your `.env` file.
+    </Step>
+    
+    <Step title="Start the database">
+      Launch your local PostgreSQL database using Docker.
+      
+      ```bash
+      npm run db:start
+      npm run db:migrate
+      ```
+      
+      <Accordion title="Optional: Seed the database">
+        Populate your database with fake data for testing:
+        
+        ```bash
+        npm run db:seed
+        ```
+      </Accordion>
+    </Step>
+    
+    <Step title="Launch the development server">
+      Start the Next.js development server with Turbopack.
+      
+      ```bash
+      npm run dev
+      ```
+      
+      Your app will be running at `http://localhost:3000`
+    </Step>
+  </Steps>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">Explore by topic</h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">Discover what you can build with the Hack Western platform</p>
+  
+  <CardGroup cols={2}>
+    <Card title="Development Setup" icon="code" href="/development/setup">
+      Complete guide to setting up your local development environment with all dependencies
+    </Card>
+    <Card title="Architecture Overview" icon="sitemap" href="/architecture/overview">
+      Understand the system design, tech stack, and how components work together
+    </Card>
+    <Card title="Application System" icon="file-lines" href="/features/applications">
+      Learn about the multi-step hacker application form with custom canvas drawing
+    </Card>
+    <Card title="Review Portal" icon="clipboard-check" href="/features/review-system">
+      Explore the organizer review system with ratings and collaborative feedback
+    </Card>
+    <Card title="Scavenger Hunt" icon="magnifying-glass" href="/features/scavenger-hunt">
+      Implement QR code scanning, points tracking, and reward redemption
+    </Card>
+    <Card title="Authentication" icon="key" href="/architecture/authentication">
+      NextAuth integration with Google OAuth and credential-based authentication
+    </Card>
+  </CardGroup>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">API Reference</h2>
+  <p className="text-base text-gray-600 dark:text-gray-400 mb-8">Explore our tRPC API routers and database schema</p>
+  
+  <CardGroup cols={3}>
+    <Card title="Application Router" icon="file" href="/api/application" cta="View endpoints">
+      Create, update, and manage hacker applications
+    </Card>
+    <Card title="Auth Router" icon="lock" href="/api/auth" cta="View endpoints">
+      Registration, login, and password reset operations
+    </Card>
+    <Card title="Review Router" icon="star" href="/api/review" cta="View endpoints">
+      Review submission and retrieval for organizers
+    </Card>
+    <Card title="Scavenger Hunt Router" icon="trophy" href="/api/scavenger-hunt" cta="View endpoints">
+      Scan items, track points, and redeem rewards
+    </Card>
+    <Card title="QR Code Router" icon="qrcode" href="/api/qr-code" cta="View endpoints">
+      Generate QR codes and Apple Wallet passes
+    </Card>
+    <Card title="Database Schema" icon="database" href="/api/schema" cta="View schema">
+      Complete database structure with Drizzle ORM
+    </Card>
+  </CardGroup>
+</div>
+
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="bg-gradient-to-br from-[#F9F5F2] to-[#cec5db]/30 dark:from-[#1a1d27] dark:to-[#242838] border border-gray-200 dark:border-[#27272a] rounded-2xl p-8 sm:p-12">
+    <div className="max-w-3xl">
+      <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-4">Ready to contribute?</h2>
+      <p className="text-base text-gray-600 dark:text-gray-400 mb-8">
+        Join the Hack Western development team and help build the future of hackathon management. Check out our development guides and start contributing today.
+      </p>
+      <a 
+        href="/getting-started"
+        className="inline-flex items-center px-6 py-3 rounded-lg bg-[#533e7b] text-white font-semibold hover:bg-[#6b4f9e] transition-colors no-underline"
+      >
+        Get Started
+        <svg className="ml-2 w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+        </svg>
+      </a>
+    </div>
+  </div>
+</div>

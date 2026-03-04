@@ -1,0 +1,139 @@
+---
+title: Apple Wallet passes
+description: Generate Apple Wallet passes with QR codes for offline hackathon access
+---
+
+Hackers can add their hackathon pass to Apple Wallet, providing quick access to their QR code even without internet connectivity.
+
+## Pass generation
+
+When a hacker requests an Apple Wallet pass:
+
+<Steps>
+  <Step title="Request pass">
+    Hacker clicks the "Add to Apple Wallet" button in their dashboard.
+  </Step>
+  
+  <Step title="Lookup existing pass">
+    The system searches Cloudflare R2 storage for the most recent `.pkpass` file for this user.
+  </Step>
+  
+  <Step title="Return URL">
+    The system returns a public URL to the pass file. iOS Safari automatically prompts to add it to Wallet.
+  </Step>
+</Steps>
+
+## Pass storage
+
+Passes are stored in Cloudflare R2 (S3-compatible object storage):
+
+- Bucket: Configured via `R2_BUCKET` environment variable
+- Path: `wallet-passes/pass-{timestamp}-{userId}.pkpass`
+- Public URL: `{R2_PUBLIC_BASE_URL}/wallet-passes/pass-{timestamp}-{userId}.pkpass`
+
+### Pass file naming
+
+Pass files follow the naming convention: `pass-{timestamp}-{userId}.pkpass`
+
+For example: `pass-1234567890-clx4k9j2k0000uxyz123456.pkpass`
+
+When multiple passes exist for a user (due to updates), the system returns the most recent one based on the `LastModified` timestamp.
+
+## Pass contents
+
+Apple Wallet passes (.pkpass files) are digitally signed ZIP archives containing:
+
+- **pass.json**: Pass metadata and field definitions
+- **QR code**: Embedded barcode with user ID
+- **Logo**: Hack Western logo
+- **Background**: Event branding
+- **Signature**: Digital signature ensuring authenticity
+
+### Pass fields
+
+The pass typically displays:
+
+- **Header**: "Hack Western 12"
+- **Primary field**: Hacker's name
+- **Secondary fields**: Email, role (hacker/organizer/sponsor)
+- **Back fields**: Event details, schedule, location
+- **Barcode**: QR code encoding user ID
+
+## Pass updates
+
+Apple Wallet passes can be updated after distribution:
+
+1. Generate new pass file with updated information
+2. Upload to R2 with new timestamp
+3. iOS automatically detects and prompts users to update their pass (if push notifications are configured)
+
+## Implementation details
+
+### Environment variables
+
+- `R2_BUCKET`: Name of R2 bucket storing passes
+- `R2_PUBLIC_BASE_URL`: Public URL base for accessing passes
+- R2 credentials configured via AWS SDK environment variables
+
+### Pass lookup query
+
+```typescript
+const listCommand = new ListObjectsV2Command({
+  Bucket: R2_BUCKET,
+  Prefix: 'wallet-passes/pass-'
+});
+
+const listResponse = await r2Client.send(listCommand);
+
+const userPasses = listResponse.Contents
+  .filter(obj => obj.Key?.endsWith(`-${userId}.pkpass`))
+  .sort((a, b) => b.LastModified - a.LastModified); // Most recent first
+
+const passUrl = `${R2_PUBLIC_BASE_URL}/${userPasses[0].Key}`;
+```
+
+### Error handling
+
+If no pass exists for a user, the system returns a 404 error:
+
+```typescript
+throw new TRPCError({
+  code: 'NOT_FOUND',
+  message: `No pass found in R2 for user ${userId}`
+});
+```
+
+This typically indicates the user's pass hasn't been pre-generated during the batch pass creation process.
+
+## Google Wallet alternative
+
+For Android users, the platform also supports Google Wallet passes using the Google Wallet API. The QR code generation router handles both wallet types:
+
+```typescript
+qr.generate({ walletType: 'APPLE' | 'GOOGLE' })
+```
+
+See [QR code generation](/features/qr-codes) for details on the unified QR/wallet endpoint.
+
+## Pre-generation workflow
+
+Passes are typically pre-generated in batch for all accepted hackers:
+
+1. Export list of accepted hacker user IDs
+2. Run batch generation script to create passes
+3. Upload all passes to R2 storage
+4. Users can then instantly download their pass without generation delay
+
+## Security considerations
+
+### Pass signing
+
+Apple requires passes to be digitally signed with a valid Apple Developer certificate. This prevents tampering and ensures authenticity.
+
+### User verification
+
+The system verifies users have verified their email before allowing pass generation, preventing unauthorized access.
+
+### QR code security
+
+The QR code contains only the user ID, which is meaningless without access to the database. Organizer-only scanner interfaces prevent unauthorized point manipulation.

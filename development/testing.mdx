@@ -1,0 +1,387 @@
+---
+title: Testing
+description: Write and run tests with Vitest for the Hack Western platform
+---
+
+The Hack Western platform uses Vitest for unit and integration testing. This guide covers the testing setup, configuration, and best practices.
+
+## Running tests
+
+Run all tests with:
+
+```bash
+npm run test
+```
+
+This executes all test files matching the pattern `*.test.ts` or `*.test.tsx`.
+
+## Vitest configuration
+
+The test environment is configured in `vitest.config.ts`:
+
+```typescript
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
+import path from "path";
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: "node",
+    setupFiles: ["dotenv/config", "./vitest.setup.ts"],
+    reporters: "verbose",
+  },
+  resolve: {
+    alias: {
+      "~": path.resolve(__dirname, "./src"),
+    },
+  },
+});
+```
+
+**Key configuration:**
+- **Environment**: Node.js environment for server-side testing
+- **Setup files**: Loads environment variables and test setup
+- **Reporters**: Verbose output for detailed test results
+- **Path alias**: `~` resolves to `./src` for consistent imports
+- **React plugin**: Enables testing React components
+
+## Test setup
+
+The test environment is initialized in `vitest.setup.ts` before running tests.
+
+### In-memory database
+
+Tests use PGLite, an in-memory PostgreSQL database, for isolated and fast testing:
+
+```typescript
+import { PGlite } from '@electric-sql/pglite';
+import { drizzle } from 'drizzle-orm/pglite';
+import * as schema from './src/server/db/schema';
+
+// Create in-memory database
+const pglite = new PGlite();
+const testDb = drizzle(pglite, { schema, logger: false });
+```
+
+**Benefits:**
+- No external database required
+- Fast test execution
+- Complete isolation between tests
+- Automatic cleanup
+
+### Mocked modules
+
+The setup file mocks common modules to prevent side effects during testing:
+
+#### Database mock
+
+```typescript
+vi.mock('~/server/db', async (importOriginal) => {
+  // ... setup code
+  return {
+    ...originalModule,
+    db: testDb, // Use PGLite instead of real database
+  };
+});
+```
+
+This replaces the real database with an in-memory instance for all tests.
+
+#### Email mock
+
+```typescript
+vi.mock("~/server/mail", () => ({
+  resend: {
+    emails: {
+      send: vi.fn().mockResolvedValue({
+        data: { id: "mocked-email-id" },
+        error: null,
+      }),
+    },
+  },
+}));
+```
+
+This prevents tests from sending real emails and provides predictable responses.
+
+## Writing tests
+
+### Test structure
+
+Organize tests using Vitest's `describe` and `test` functions:
+
+```typescript
+import { describe, test, expect } from 'vitest';
+
+describe('Feature name', () => {
+  test('should do something', () => {
+    // Arrange
+    const input = 'test';
+    
+    // Act
+    const result = someFunction(input);
+    
+    // Assert
+    expect(result).toBe('expected');
+  });
+});
+```
+
+### Testing with the database
+
+Access the test database using the exported `testDb` instance:
+
+```typescript
+import { testDb } from '../vitest.setup';
+import { users } from '~/server/db/schema';
+
+test('should create a user', async () => {
+  // Insert test data
+  await testDb.insert(users).values({
+    name: 'Test User',
+    email: 'test@example.com',
+  });
+  
+  // Query and verify
+  const result = await testDb.query.users.findFirst({
+    where: eq(users.email, 'test@example.com'),
+  });
+  
+  expect(result?.name).toBe('Test User');
+});
+```
+
+### Testing tRPC procedures
+
+Test tRPC endpoints by importing and calling them directly:
+
+```typescript
+import { appRouter } from '~/server/api/root';
+import { createInnerTRPCContext } from '~/server/api/trpc';
+
+test('should return user data', async () => {
+  // Create context
+  const ctx = createInnerTRPCContext({
+    session: {
+      user: { id: '1', name: 'Test User' },
+      expires: new Date().toISOString(),
+    },
+  });
+  
+  // Create caller
+  const caller = appRouter.createCaller(ctx);
+  
+  // Call procedure
+  const result = await caller.user.getProfile();
+  
+  expect(result.name).toBe('Test User');
+});
+```
+
+### Testing React components
+
+Test React components with React Testing Library patterns:
+
+```typescript
+import { render, screen } from '@testing-library/react';
+import { test, expect } from 'vitest';
+import { MyComponent } from './MyComponent';
+
+test('should render component', () => {
+  render(<MyComponent title="Test" />);
+  
+  expect(screen.getByText('Test')).toBeInTheDocument();
+});
+```
+
+## Test patterns
+
+### Arrange-Act-Assert
+
+Structure tests using the AAA pattern:
+
+```typescript
+test('should calculate total', () => {
+  // Arrange: Set up test data
+  const items = [{ price: 10 }, { price: 20 }];
+  
+  // Act: Execute the function
+  const total = calculateTotal(items);
+  
+  // Assert: Verify the result
+  expect(total).toBe(30);
+});
+```
+
+### Async/await
+
+Handle asynchronous operations with async/await:
+
+```typescript
+test('should fetch data', async () => {
+  const data = await fetchData();
+  expect(data).toBeDefined();
+});
+```
+
+### Mocking functions
+
+Create mock functions with `vi.fn()`:
+
+```typescript
+import { vi } from 'vitest';
+
+test('should call callback', () => {
+  const callback = vi.fn();
+  
+  someFunction(callback);
+  
+  expect(callback).toHaveBeenCalled();
+  expect(callback).toHaveBeenCalledWith('expected-arg');
+});
+```
+
+### Testing errors
+
+Verify error handling:
+
+```typescript
+test('should throw error for invalid input', () => {
+  expect(() => {
+    validateInput('');
+  }).toThrow('Input cannot be empty');
+});
+
+test('should reject with error', async () => {
+  await expect(asyncFunction()).rejects.toThrow('Error message');
+});
+```
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Test isolation" icon="shield">
+    Each test should be independent and not rely on the state from other tests. Use setup and teardown functions to ensure clean state.
+  </Card>
+  
+  <Card title="Descriptive names" icon="comment">
+    Use clear, descriptive test names that explain what is being tested and the expected outcome.
+  </Card>
+  
+  <Card title="Test behavior" icon="gear">
+    Test the behavior and outcomes, not implementation details. This makes tests more maintainable.
+  </Card>
+  
+  <Card title="Mock external dependencies" icon="plug">
+    Mock external services, APIs, and databases to keep tests fast and reliable.
+  </Card>
+</CardGroup>
+
+### Writing good tests
+
+**Do:**
+- Test edge cases and error conditions
+- Keep tests simple and focused
+- Use meaningful assertions
+- Test user-facing behavior
+- Mock external dependencies
+
+**Don't:**
+- Test implementation details
+- Create dependencies between tests
+- Write tests that are too complex
+- Skip cleanup after tests
+- Test third-party library code
+
+## Watch mode
+
+Run tests in watch mode during development:
+
+```bash
+npm run test -- --watch
+```
+
+This will:
+- Re-run tests when files change
+- Show only failed tests after initial run
+- Provide interactive commands for filtering tests
+
+## Coverage
+
+Generate test coverage reports:
+
+```bash
+npm run test -- --coverage
+```
+
+This creates a coverage report showing:
+- Line coverage
+- Branch coverage
+- Function coverage
+- Statement coverage
+
+## Debugging tests
+
+### Console output
+
+Vitest runs with verbose reporters, so you'll see detailed output for each test.
+
+### Debugging in VS Code
+
+Add a launch configuration to `.vscode/launch.json`:
+
+```json
+{
+  "type": "node",
+  "request": "launch",
+  "name": "Debug Vitest Tests",
+  "runtimeExecutable": "npm",
+  "runtimeArgs": ["run", "test"],
+  "console": "integratedTerminal",
+  "internalConsoleOptions": "neverOpen"
+}
+```
+
+### Isolating tests
+
+Run a single test file:
+
+```bash
+npm run test -- path/to/test.test.ts
+```
+
+Run tests matching a pattern:
+
+```bash
+npm run test -- --grep "user authentication"
+```
+
+## Common issues
+
+### Import path errors
+
+If you see module resolution errors, verify:
+- The `~` alias is configured in `vitest.config.ts`
+- Import paths match the project structure
+- Files are in the correct location
+
+### Database schema errors
+
+If database tests fail:
+1. Ensure `vitest.setup.ts` is running
+2. Check that schema is pushed to the test database
+3. Verify table names match schema definitions
+
+### Mock not working
+
+If mocks aren't being applied:
+1. Ensure `vi.mock()` is called before imports
+2. Check the module path is correct
+3. Verify the mock is returning the expected structure
+
+## Resources
+
+- [Vitest Documentation](https://vitest.dev/)
+- [Testing Library](https://testing-library.com/)
+- [PGLite Documentation](https://github.com/electric-sql/pglite)

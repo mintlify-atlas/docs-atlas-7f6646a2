@@ -1,0 +1,242 @@
+---
+title: Scavenger hunt game
+description: QR-based point collection system with rewards, leaderboard, and activity tracking
+---
+
+The scavenger hunt gamifies the hackathon experience by rewarding attendees with points for participating in meals, workshops, activities, and challenges. Hackers scan QR codes at events to earn points, which they can redeem for prizes.
+
+## How it works
+
+<Steps>
+  <Step title="Attend events">
+    Throughout the hackathon, attend meals, workshops, sponsor activities, and other events.
+  </Step>
+  
+  <Step title="Get scanned">
+    An organizer scans your QR code (from your hacker profile or wallet pass) at the event to record your attendance.
+  </Step>
+  
+  <Step title="Earn points">
+    Points are automatically added to your balance based on the event's point value.
+  </Step>
+  
+  <Step title="Redeem rewards">
+    Visit the redemption center to exchange points for prizes and swag.
+  </Step>
+</Steps>
+
+## Point tracking
+
+Each hacker has two point balances:
+
+- `scavengerHuntEarned`: Total points earned throughout the event (never decreases)
+- `scavengerHuntBalance`: Current spendable points (decreases when redeeming rewards)
+
+The earned balance is used for leaderboards, while the current balance determines what rewards can be redeemed.
+
+## Scavenger hunt items
+
+Items are activities or events that award points when scanned. Each item has:
+
+- `id`: Unique identifier (serial)
+- `code`: Short code used in QR codes (max 12 characters, unique)
+- `points`: Point value awarded (smallint, default: 1)
+- `description`: Human-readable event name (text)
+- `deletedAt`: Soft deletion timestamp (null if active)
+
+### Item categories
+
+Items are categorized by their code suffix:
+
+| Suffix | Category | Description |
+|--------|----------|-------------|
+| `_meal` | Meals | Breakfast, lunch, dinner, and snacks |
+| `_ws` | Regular workshops | Educational workshops run by organizers |
+| `_sw` | Sponsor workshops | Technical sessions hosted by sponsors |
+| `_act` | Non-winnable activities | Social events and activities (participation only) |
+| `_att` | Winnable activities (attendance) | Competitions where attending awards points |
+| `_win` | Winnable activities (win) | Competitions where winning awards points |
+| `_bonus` | Bonus | Special bonus point opportunities |
+
+## Rewards system
+
+Rewards are prizes that hackers can redeem using their points:
+
+- `id`: Unique identifier (serial)
+- `name`: Reward name (max 255 characters)
+- `costPoints`: Point cost (smallint)
+- `description`: Detailed description (text)
+- `quantity`: Available quantity (integer, null for unlimited)
+
+### Redemption tracking
+
+When a hacker redeems a reward:
+
+1. Points are deducted from their balance
+2. If the reward has limited quantity, stock is decremented
+3. A redemption record is created with timestamp
+4. The hacker receives a confirmation
+
+## Scanning workflow
+
+Only organizers can scan QR codes to award points:
+
+<Steps>
+  <Step title="Select activity">
+    Organizer opens the scan interface and selects which event/activity to scan for.
+  </Step>
+  
+  <Step title="Scan hacker QR code">
+    Organizer scans the hacker's QR code from their profile or wallet pass.
+  </Step>
+  
+  <Step title="Record scan">
+    The system verifies the hacker hasn't already scanned this item, then awards points and records the scan with timestamp and scanner ID.
+  </Step>
+  
+  <Step title="Confirmation">
+    Both the hacker and organizer receive confirmation of the successful scan.
+  </Step>
+</Steps>
+
+## Scan records
+
+Each scan creates a record with:
+
+- `userId`: ID of the hacker who was scanned
+- `scannerId`: ID of the organizer who performed the scan
+- `itemId`: ID of the scavenger hunt item
+- `createdAt`: Timestamp of the scan
+
+The composite primary key `(userId, itemId)` ensures hackers can only scan each item once.
+
+## Redemption records
+
+Each redemption creates a record with:
+
+- `id`: Unique identifier (serial)
+- `userId`: ID of the hacker redeeming the reward
+- `rewardId`: ID of the reward being redeemed
+- `createdAt`: Timestamp of the redemption
+
+## API endpoints
+
+### For hackers
+
+#### Get your points
+
+```typescript
+scavengerHunt.getPoints()
+```
+
+Returns `{ earned: number, balance: number }` for the current user.
+
+#### Get your activity history
+
+```typescript
+scavengerHunt.getScans()
+```
+
+Returns combined list of scans (points earned) and redemptions (points spent) sorted by date.
+
+#### Redeem a reward
+
+```typescript
+scavengerHunt.redeem({ rewardId: number })
+```
+
+Redeems a reward if the hacker has sufficient points and the reward is in stock.
+
+### For organizers
+
+#### Get all items
+
+```typescript
+scavengerHunt.getAllScavengerHuntItems()
+```
+
+Returns all scavenger hunt items including soft-deleted ones.
+
+#### Get item by code
+
+```typescript
+scavengerHunt.getScavengerHuntItem({ code: string })
+```
+
+Looks up an item by its short code (used when scanning QR codes).
+
+#### Scan for a hacker
+
+```typescript
+scavengerHunt.scan({
+  userId: string,
+  itemId?: number,
+  itemCode?: string
+})
+```
+
+Records a scan for a hacker at a specific event. Provide either `itemId` or `itemCode`.
+
+#### Get all scans
+
+```typescript
+scavengerHunt.getAllScans({
+  filter?: 'all' | 'meals' | 'workshops' | 'sponsor_workshops' | 
+           'activities' | 'attendance' | 'wins' | 'bonus'
+})
+```
+
+Returns all scans across all hackers, optionally filtered by category.
+
+#### Get hacker points
+
+```typescript
+scavengerHunt.getPointsByUserId({ requestedUserId: string })
+```
+
+Returns point balances for a specific hacker.
+
+#### Redeem for a hacker
+
+```typescript
+scavengerHunt.redeemForUser({
+  userId: string,
+  rewardId: number
+})
+```
+
+Redeems a reward on behalf of a hacker (used at redemption stations).
+
+#### Get all rewards
+
+```typescript
+scavengerHunt.getAllRewards()
+```
+
+Returns all available rewards with current quantities.
+
+#### Delete item
+
+```typescript
+scavengerHunt.deleteScavengerHuntItem({ itemId: number })
+```
+
+Soft-deletes an item by setting its `deletedAt` timestamp.
+
+## Implementation details
+
+### Preventing duplicate scans
+
+The composite primary key on scans ensures each hacker can only scan each item once. Attempting to scan the same item twice results in a "Item already scanned" error.
+
+### Transaction safety
+
+All point-altering operations (scanning and redemption) use database transactions to prevent race conditions and ensure consistency.
+
+### Soft deletion
+
+Items are soft-deleted rather than hard-deleted to preserve historical scan data. Queries check `deletedAt IS NULL OR deletedAt > NOW()` to exclude deleted items.
+
+### Leaderboard queries
+
+Leaderboards query `scavengerHuntEarned` with indexes for fast ranking of top point earners.

@@ -1,0 +1,184 @@
+---
+title: Auth router
+description: Authentication endpoints for user registration, login, password management, and email verification
+---
+
+The auth router handles user authentication operations including account creation, password resets, and email verification.
+
+## Create account
+
+Registers a new user account with email and password. Automatically sends a verification email.
+
+```typescript
+const result = await trpc.auth.create.mutate({
+  email: "user@example.com",
+  password: "SecurePass123!"
+});
+```
+
+<ParamField body="email" type="string" required>
+  Valid email address for the new account. Must not already be registered.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Password for the account. Must meet the following requirements:
+  - At least 8 characters long
+  - Contains at least one uppercase letter
+  - Contains at least one number
+  - Contains at least one special character (symbol)
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  Returns `true` if account creation and verification email were successful.
+</ResponseField>
+
+## Request password reset
+
+Generates a password reset token and sends a reset email to the user.
+
+```typescript
+const result = await trpc.auth.reset.mutate({
+  email: "user@example.com"
+});
+```
+
+<ParamField body="email" type="string" required>
+  Email address of the account to reset. Must be a registered user.
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  Returns `true` if the reset email was sent successfully. Throws `NOT_FOUND` error if user doesn't exist.
+</ResponseField>
+
+## Set new password
+
+Sets a new password using a valid reset token.
+
+```typescript
+const result = await trpc.auth.setPassword.mutate({
+  token: "a1b2c3d4e5f6...",
+  password: "NewSecurePass123!"
+});
+```
+
+<ParamField body="token" type="string" required>
+  40-character password reset token received via email.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  New password. Must meet the same requirements as account creation:
+  - At least 8 characters long
+  - Contains at least one uppercase letter
+  - Contains at least one number
+  - Contains at least one special character
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  Returns `true` if password was updated successfully. The reset token is deleted after use.
+</ResponseField>
+
+## Check verification status
+
+Checks whether the current user's email is verified.
+
+```typescript
+const status = await trpc.auth.checkVerified.useQuery();
+```
+
+<ResponseField name="verified" type="Date | null">
+  Timestamp of when the email was verified, or `null` if not yet verified.
+</ResponseField>
+
+## Verify email
+
+Verifies a user's email address using the verification token sent via email.
+
+```typescript
+const result = await trpc.auth.verify.mutate({
+  token: "verification_token_here"
+});
+```
+
+<ParamField body="token" type="string" required>
+  Verification token received via email.
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  Returns `true` if email verification was successful. The verification token is deleted after use.
+</ResponseField>
+
+## Resend verification email
+
+Sends a new verification email to the current user.
+
+```typescript
+const result = await trpc.auth.resendEmail.mutate();
+```
+
+<ResponseField name="success" type="boolean">
+  Returns `true` if the verification email was sent successfully.
+</ResponseField>
+
+## Check valid reset token
+
+Validates a password reset token without consuming it.
+
+```typescript
+const isValid = await trpc.auth.checkValidToken.useQuery({
+  token: "reset_token_here"
+});
+```
+
+<ParamField path="token" type="string" required>
+  Password reset token to validate.
+</ParamField>
+
+<ResponseField name="success" type="boolean">
+  Returns `true` if the token exists and hasn't expired. Throws error if token is invalid or expired.
+  
+  Note: This endpoint also updates the user's `emailVerified` timestamp and deletes verification tokens, which appears to be implementation overlap with the verify endpoint.
+</ResponseField>
+
+## Token expiry
+
+All tokens (verification and password reset) expire after 11 minutes (660,000 milliseconds) from creation.
+
+## Error handling
+
+<Tabs>
+  <Tab title="User already exists">
+    ```json
+    {
+      "code": "CONFLICT",
+      "message": "User already exists"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="User not found">
+    ```json
+    {
+      "code": "NOT_FOUND",
+      "message": "User not found"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Token expired">
+    ```json
+    {
+      "code": "BAD_REQUEST",
+      "message": "Verification token expired"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Invalid token">
+    ```json
+    {
+      "code": "NOT_FOUND",
+      "message": "Token not found"
+    }
+    ```
+  </Tab>
+</Tabs>

@@ -1,0 +1,168 @@
+---
+title: Application review system
+description: Organizer portal for reviewing hacker applications with ratings, comments, and assignment workflow
+---
+
+The review system allows organizers to evaluate hacker applications through a structured rating process. Each application receives multiple independent reviews to ensure fair evaluation.
+
+## Review workflow
+
+<Steps>
+  <Step title="Get next application">
+    The system automatically assigns the next application that needs review. Applications are prioritized by how many reviews they've received (fewest first) with random distribution among applications at the same review count.
+  </Step>
+  
+  <Step title="Review application">
+    Read through the hacker's application including their essays, profile, and canvas drawing.
+  </Step>
+  
+  <Step title="Rate and comment">
+    Provide ratings in three categories and optionally add detailed comments.
+  </Step>
+  
+  <Step title="Submit review">
+    Once all required ratings are provided, submit the review. The system will automatically assign your next application.
+  </Step>
+</Steps>
+
+## Review assignment logic
+
+The system uses intelligent assignment to distribute reviews fairly:
+
+1. If the reviewer has an incomplete review in progress, return to that application
+2. Exclude applications the reviewer has already completed
+3. Prioritize applications with fewer total reviews (minimum 2 required per application)
+4. Exclude referred applications from normal assignment
+5. Randomly distribute among applications at the same priority level
+6. Skip any application ID specified in the request (used when manually skipping)
+
+## Rating system
+
+Reviewers evaluate applications across three dimensions:
+
+### Originality rating
+
+Field: `originalityRating` (smallint, default: 0)
+
+Measures the creativity and uniqueness of the applicant's ideas and responses.
+
+### Technicality rating
+
+Field: `technicalityRating` (smallint, default: 0)
+
+Assesses technical skills and experience demonstrated in the application.
+
+### Passion rating
+
+Field: `passionRating` (smallint, default: 0)
+
+Evaluates enthusiasm and genuine interest in hackathons and technology.
+
+## Review fields
+
+### Core fields
+
+- `reviewerUserId`: ID of the organizer conducting the review
+- `applicantUserId`: ID of the hacker being reviewed
+- `createdAt`: Timestamp when review was first created
+- `updatedAt`: Timestamp of last modification
+- `completed`: Boolean indicating if review has all required ratings (automatically set)
+
+### Rating fields
+
+- `originalityRating`: Smallint rating (defaults to 0)
+- `technicalityRating`: Smallint rating (defaults to 0)
+- `passionRating`: Smallint rating (defaults to 0)
+- `comments`: Optional text field for detailed feedback
+
+### Special flags
+
+- `referral`: Boolean indicating if this is a referral (bypasses normal review requirements)
+
+## Review states
+
+### Draft review
+
+When a reviewer starts rating an application but hasn't provided all required ratings, the review is saved as incomplete (`completed: false`). The reviewer can return to finish it later.
+
+### Completed review
+
+Once all three rating categories have values greater than 0, the review is automatically marked as completed. The system will then assign a new application to the reviewer.
+
+### Empty review
+
+If a reviewer resets all ratings to 0 and clears comments, the review record is deleted entirely rather than saved as empty.
+
+## API endpoints
+
+### Get next application to review
+
+```typescript
+review.getNextId({ skipId?: string })
+```
+
+Returns the user ID of the next application to review. Optionally skip a specific application ID.
+
+### Get review by applicant
+
+```typescript
+review.getById({ applicantId: string })
+```
+
+Fetches the current reviewer's review for a specific applicant. Returns an empty review object if no review exists yet.
+
+### Save review
+
+```typescript
+review.save({
+  applicantUserId: string,
+  originalityRating: number,
+  technicalityRating: number,
+  passionRating: number,
+  comments?: string
+})
+```
+
+Saves or updates a review. The `completed` flag is automatically set based on whether all ratings are provided.
+
+### Refer applicant
+
+```typescript
+review.referApplicant({ applicantUserId: string })
+```
+
+Creates a referral record for an applicant, flagging them as a strong candidate who should bypass normal review requirements.
+
+### Get review counts
+
+```typescript
+review.getReviewCounts()
+```
+
+Returns the number of completed reviews by each organizer, sorted by count descending. Useful for tracking reviewer workload.
+
+### Get reviews by organizer
+
+```typescript
+review.getByOrganizer()
+```
+
+Fetches all reviews completed by the current organizer, including applicant names and emails.
+
+## Implementation notes
+
+### Review requirements
+
+Each application must receive at least 2 completed reviews (defined by `REQUIRED_REVIEWS` constant). Applications remain in `PENDING_REVIEW` status until this threshold is met.
+
+### Composite primary key
+
+Reviews use a composite primary key of `(reviewerUserId, applicantUserId)`, ensuring each reviewer can only submit one review per applicant.
+
+### Race condition protection
+
+The review assignment logic uses database-level operations to prevent two reviewers from being assigned the same application simultaneously.
+
+### Reviewer anonymity
+
+While the system tracks which organizer completed each review (for workload distribution), reviewers' identities and individual ratings are kept separate from final acceptance decisions.

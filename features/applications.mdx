@@ -1,0 +1,155 @@
+---
+title: Hacker applications
+description: Multi-step application form with character creation, canvas drawing, and automated status workflow
+---
+
+The hacker application system allows prospective attendees to apply to Hack Western through a multi-step form that includes profile information, essay questions, and creative elements like character customization and canvas drawing.
+
+## Application workflow
+
+<Steps>
+  <Step title="Create character">
+    Choose your avatar's color, face, hands, and hat accessories to create a unique character identity.
+  </Step>
+  
+  <Step title="Basic information">
+    Provide personal details including name, phone number, age, and country of residence.
+  </Step>
+  
+  <Step title="Academic information">
+    Share your school, level of study, major, and hackathon experience.
+  </Step>
+  
+  <Step title="Tell your story">
+    Answer three essay questions that help organizers understand your interests and goals.
+  </Step>
+  
+  <Step title="Profile links">
+    Optionally provide links to your resume, GitHub, LinkedIn, or other portfolios.
+  </Step>
+  
+  <Step title="Agreements">
+    Accept the code of conduct, MLH data sharing agreement, and confirm you'll be 18+ at the event.
+  </Step>
+  
+  <Step title="Optional demographics">
+    Optionally share demographic information to help organizers improve outreach and accessibility.
+  </Step>
+  
+  <Step title="Canvas drawing">
+    Draw something creative on a canvas. This is a fun, low-pressure way to express yourself.
+  </Step>
+  
+  <Step title="Review and submit">
+    Review all your information before final submission. Once submitted, you cannot make changes.
+  </Step>
+</Steps>
+
+## Application statuses
+
+Applications progress through several statuses during the review and acceptance process:
+
+| Status | Description |
+|--------|-------------|
+| `IN_PROGRESS` | Application has been started but not yet submitted |
+| `PENDING_REVIEW` | Application has been submitted and is awaiting review assignment |
+| `IN_REVIEW` | Application is currently being reviewed by organizers |
+| `ACCEPTED` | Application has been accepted |
+| `REJECTED` | Application has been rejected |
+| `WAITLISTED` | Application has been waitlisted |
+| `DECLINED` | Hacker declined their acceptance |
+
+Status transitions are managed automatically when applications are submitted and reviewed.
+
+## Application fields
+
+### Character creation
+
+- `avatarColour`: One of red, orange, yellow, green, blue, purple, or pink
+- `avatarFace`: Integer representing face style selection
+- `avatarLeftHand`: Integer representing left hand accessory
+- `avatarRightHand`: Integer representing right hand accessory
+- `avatarHat`: Integer representing hat accessory
+
+### Basic information
+
+- `firstName`: First name (max 255 characters)
+- `lastName`: Last name (max 255 characters)
+- `phoneNumber`: Phone number with frontend validation (max 42 characters)
+- `age`: Age (must be 18+)
+- `countryOfResidence`: One of Canada, United States, India, or Other
+
+### Academic information
+
+- `school`: School or university name (max 255 characters)
+- `levelOfStudy`: Education level from predefined enum values
+- `major`: Field of study from predefined enum values
+- `attendedBefore`: Boolean indicating if they've attended Hack Western before
+- `numOfHackathons`: Total hackathons attended (0, 1-3, 4-6, or 7+)
+
+### Story questions
+
+- `question1`: First essay response (text)
+- `question2`: Second essay response (text)
+- `question3`: Third essay response (text)
+
+### Profile links
+
+- `resumeLink`: URL to resume (max 2048 characters, required)
+- `githubLink`: GitHub username (automatically prefixed with https://github.com/)
+- `linkedInLink`: LinkedIn username (automatically prefixed with https://linkedin.com/in/)
+- `otherLink`: Any other portfolio link (max 2048 characters)
+
+### Agreements
+
+- `agreeCodeOfConduct`: Must be true (required)
+- `agreeShareWithMLH`: Must be true (required)
+- `agreeShareWithSponsors`: Boolean (optional)
+- `agreeEmailsFromMLH`: Boolean (optional)
+- `agreeWillBe18`: Must be true (required)
+
+### Optional demographics
+
+- `underrepGroup`: Boolean indicating membership in underrepresented group
+- `gender`: Gender identity from predefined enum values
+- `ethnicity`: Race/ethnicity from predefined enum values
+- `sexualOrientation`: Sexual orientation from predefined enum values
+
+### Canvas drawing
+
+- `canvasData`: JSON object containing:
+  - `paths`: Array of drawing paths (arrays of coordinate points)
+  - `timestamp`: Unix timestamp of last modification
+  - `version`: Canvas data format version
+
+## API endpoints
+
+### Get application
+
+```typescript
+application.get({ fields?: string[] })
+```
+
+Fetches the current user's application. Optionally specify which fields to retrieve to reduce payload size.
+
+### Save application
+
+```typescript
+application.save(data)
+```
+
+Saves application progress. Can be called multiple times before submission. GitHub and LinkedIn links are automatically prefixed with their base URLs.
+
+### Submit application
+
+```typescript
+application.submit()
+```
+
+Submits the application for review. Validates that all required fields are complete before changing status to `PENDING_REVIEW`.
+
+## Implementation details
+
+The application system tracks progress automatically. When users return to `/apply`, the system determines the next incomplete step by checking which required fields are empty, then redirects them to continue from that step.
+
+Applications are autosaved as users progress through steps, ensuring no data is lost if they navigate away or close the browser.

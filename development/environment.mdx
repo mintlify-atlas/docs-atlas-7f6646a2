@@ -1,0 +1,287 @@
+---
+title: Environment variables
+description: Configure environment variables for the Hack Western platform
+---
+
+The Hack Western platform uses environment variables for configuration. This guide covers all required and optional environment variables.
+
+## Setup
+
+Environment variables are stored in a `.env` file at the root of the project. This file is gitignored and should never be committed.
+
+<Steps>
+  <Step title="Create .env file">
+    Copy the example environment file:
+    
+    ```bash
+    cp .env.example .env
+    ```
+  </Step>
+
+  <Step title="Get credentials">
+    Request a copy of the complete `.env` file from a web lead, or configure the variables manually using this guide.
+  </Step>
+
+  <Step title="Generate secrets">
+    Generate required secrets like `NEXTAUTH_SECRET`:
+    
+    ```bash
+    openssl rand -base64 32
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  Never commit the `.env` file to version control. It contains sensitive credentials and secrets.
+</Warning>
+
+## Environment variables reference
+
+### Database
+
+PostgreSQL database connection string.
+
+```bash
+DATABASE_URL="postgresql://postgres:password@localhost:5432/."
+```
+
+- **Format**: `postgresql://[user]:[password]@[host]:[port]/[database]`
+- **Local development**: Use `localhost:5432` with Docker
+- **Production**: Use your hosted PostgreSQL URL
+
+### Authentication
+
+NextAuth.js configuration for authentication.
+
+#### NEXTAUTH_SECRET
+
+Secret key for signing tokens and encrypting session data.
+
+```bash
+NEXTAUTH_SECRET=""
+```
+
+**Generate with:**
+```bash
+openssl rand -base64 32
+```
+
+<Note>
+  This is required for NextAuth.js to function. Each environment should have a unique secret.
+</Note>
+
+#### NEXTAUTH_URL
+
+The canonical URL of your application.
+
+```bash
+NEXTAUTH_URL="http://localhost:3000"
+```
+
+- **Local development**: `http://localhost:3000`
+- **Production**: `https://yourdomain.com`
+
+### OAuth providers
+
+The platform supports multiple OAuth providers for authentication.
+
+#### GitHub
+
+GitHub OAuth application credentials.
+
+```bash
+GITHUB_CLIENT_ID=""
+GITHUB_CLIENT_SECRET=""
+```
+
+**Setup:**
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Create a new OAuth App
+3. Set Authorization callback URL to: `http://localhost:3000/api/auth/callback/github`
+4. Copy the Client ID and generate a Client Secret
+
+#### Google
+
+Google OAuth 2.0 credentials.
+
+```bash
+GOOGLE_CLIENT_ID=""
+GOOGLE_CLIENT_SECRET=""
+```
+
+**Setup:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the Google+ API
+4. Create OAuth 2.0 credentials
+5. Add authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
+6. Copy the Client ID and Client Secret
+
+#### Discord
+
+Discord OAuth2 application credentials.
+
+```bash
+DISCORD_CLIENT_ID=""
+DISCORD_CLIENT_SECRET=""
+```
+
+**Setup:**
+1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
+2. Create a new application
+3. Go to OAuth2 settings
+4. Add redirect: `http://localhost:3000/api/auth/callback/discord`
+5. Copy the Client ID and Client Secret
+
+### Email
+
+Resend API for sending transactional emails.
+
+```bash
+RESEND_API_KEY=""
+```
+
+**Setup:**
+1. Sign up at [Resend](https://resend.com)
+2. Generate an API key
+3. Add your domain and verify it
+4. Copy the API key
+
+<Note>
+  Resend is used for sending emails like verification emails, notifications, and password resets.
+</Note>
+
+### File storage
+
+Cloudflare R2 configuration for file uploads (resumes, etc.).
+
+```bash
+R2_ACCESS_KEY_ID=""
+R2_SECRET_ACCESS_KEY=""
+R2_ENDPOINT="https://<accountid>.r2.cloudflarestorage.com"
+R2_BUCKET_NAME="hw12-resumes"
+R2_PUBLIC_BASE_URL="https://pub-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.r2.dev"
+```
+
+**Setup:**
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. Navigate to R2 Object Storage
+3. Create a new bucket (e.g., `hw12-resumes`)
+4. Generate R2 API tokens with read/write permissions
+5. Set up public access if needed
+6. Copy the credentials
+
+**Configuration:**
+- **R2_ACCESS_KEY_ID**: Your R2 access key ID
+- **R2_SECRET_ACCESS_KEY**: Your R2 secret access key
+- **R2_ENDPOINT**: Your account's R2 endpoint (includes your account ID)
+- **R2_BUCKET_NAME**: Name of your R2 bucket
+- **R2_PUBLIC_BASE_URL**: Public URL for accessing files (if public access is enabled)
+
+## Environment validation
+
+Environment variables are validated at runtime using `@t3-oss/env-nextjs` in `src/env.js`. This ensures:
+
+- Required variables are present
+- Variables have the correct format
+- Type-safe access to environment variables throughout the application
+
+If required variables are missing or invalid, the application will fail to start with a clear error message.
+
+## Multiple environments
+
+For different environments (development, staging, production):
+
+<Tabs>
+  <Tab title="Development">
+    Use `.env` for local development:
+    
+    ```bash
+    npm run dev
+    ```
+  </Tab>
+
+  <Tab title="Production">
+    Use `.env.prod` for production-like testing:
+    
+    ```bash
+    npm run dev:prod
+    ```
+    
+    This runs the dev server with production environment variables.
+  </Tab>
+
+  <Tab title="CI/CD">
+    For CI/CD pipelines, set environment variables in your CI/CD platform:
+    
+    - GitHub Actions: Repository Secrets
+    - Vercel: Environment Variables
+    - Railway: Variables
+  </Tab>
+</Tabs>
+
+## Example configuration
+
+Minimal `.env` file for local development:
+
+```bash
+# Database
+DATABASE_URL="postgresql://postgres:password@localhost:5432/."
+
+# Auth
+NEXTAUTH_SECRET="your-generated-secret-here"
+NEXTAUTH_URL="http://localhost:3000"
+
+# OAuth (at least one provider)
+GITHUB_CLIENT_ID="your-github-client-id"
+GITHUB_CLIENT_SECRET="your-github-client-secret"
+
+# Optional: Email
+RESEND_API_KEY=""
+
+# Optional: File storage
+R2_ACCESS_KEY_ID=""
+R2_SECRET_ACCESS_KEY=""
+R2_ENDPOINT="https://<accountid>.r2.cloudflarestorage.com"
+R2_BUCKET_NAME="hw12-resumes"
+R2_PUBLIC_BASE_URL="https://pub-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.r2.dev"
+```
+
+## Security best practices
+
+<Warning>
+  Follow these security practices to keep your application secure:
+</Warning>
+
+- Never commit `.env` files to version control
+- Use different secrets for each environment
+- Rotate secrets regularly, especially after team member changes
+- Use strong, randomly generated secrets
+- Limit access to production credentials
+- Use environment-specific OAuth applications
+- Store production secrets in secure secret management systems
+- Never log or expose environment variables in error messages
+
+## Troubleshooting
+
+### Missing variables error
+
+If you see validation errors on startup:
+
+```
+Invalid environment variables: ...
+```
+
+1. Check that all required variables are in your `.env` file
+2. Ensure there are no typos in variable names
+3. Verify the format matches the examples
+4. Restart your development server after changes
+
+### OAuth redirect errors
+
+If OAuth authentication fails:
+
+1. Verify redirect URIs in OAuth provider settings match exactly
+2. Check that `NEXTAUTH_URL` is set correctly
+3. Ensure OAuth credentials are copied correctly (no extra spaces)
+4. Verify the OAuth application is enabled

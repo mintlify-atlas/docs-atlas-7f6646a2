@@ -1,0 +1,282 @@
+---
+title: Database management
+description: Manage your PostgreSQL database with Drizzle ORM
+---
+
+The Hack Western platform uses PostgreSQL as its database and Drizzle ORM for type-safe database access. This guide covers database setup, migrations, seeding, and management.
+
+## Database scripts
+
+The following npm scripts are available for database management:
+
+```bash
+# Start the PostgreSQL Docker container
+npm run db:start
+
+# Open Drizzle Studio
+npm run db:studio
+
+# Generate migration files
+npm run db:generate
+
+# Apply migrations
+npm run db:migrate
+
+# Seed the database
+npm run db:seed
+```
+
+## Starting the database
+
+The development database runs in a Docker container. Start it with:
+
+```bash
+npm run db:start
+```
+
+This script (`start-database.sh`) will:
+
+1. Check if Docker is installed
+2. Check if a container named `hackwestern_db` already exists
+3. Start the existing container if found, or create a new one
+4. Read the database password from your `.env` file
+5. Generate a secure random password if you're using the default
+6. Create a PostgreSQL container with:
+   - Container name: `hackwestern_db`
+   - Port: `5432`
+   - Database name: `.`
+   - Password: From `DATABASE_URL` in `.env`
+
+### Windows users
+
+If you're on Windows:
+
+<Steps>
+  <Step title="Install WSL">
+    Install [Windows Subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/install)
+  </Step>
+  
+  <Step title="Install Docker Desktop">
+    Install [Docker Desktop for Windows](https://docs.docker.com/docker-for-windows/install/)
+  </Step>
+  
+  <Step title="Run in WSL">
+    Open WSL and run the script:
+    
+    ```bash
+    wsl
+    npm run db:start
+    ```
+  </Step>
+</Steps>
+
+## Drizzle configuration
+
+The Drizzle configuration is defined in `drizzle.config.ts`:
+
+```typescript
+import { defineConfig } from "drizzle-kit";
+import { env } from "~/env";
+
+export default defineConfig({
+  out: "./drizzle",
+  schema: "./src/server/db/schema.ts",
+  dialect: "postgresql",
+  dbCredentials: {
+    url: env.DATABASE_URL,
+  },
+  tablesFilter: ["hw_*"],
+});
+```
+
+Key configuration:
+- **Schema location**: `./src/server/db/schema.ts`
+- **Migrations folder**: `./drizzle`
+- **Table prefix**: All tables are prefixed with `hw_`
+- **Database URL**: Read from `DATABASE_URL` environment variable
+
+## Managing migrations
+
+<Warning>
+  Do not use `npx drizzle-kit push` in development. Always generate and apply migrations properly to maintain migration history.
+</Warning>
+
+When you make changes to the database schema:
+
+<Steps>
+  <Step title="Update the schema">
+    Make your changes to `src/server/db/schema.ts`
+  </Step>
+
+  <Step title="Generate migration files">
+    Generate SQL migration scripts:
+    
+    ```bash
+    npm run db:generate
+    ```
+    
+    This will:
+    - Compare your schema with the current database state
+    - Generate SQL migration files in the `./drizzle` folder
+    - Create a `meta` folder with migration metadata
+  </Step>
+
+  <Step title="Apply migrations">
+    Apply the generated migrations to your database:
+    
+    ```bash
+    npm run db:migrate
+    ```
+    
+    This runs `tsx ./src/server/db/migrate.ts` which applies all pending migrations.
+  </Step>
+</Steps>
+
+### Migration workflow example
+
+```bash
+# 1. Edit your schema
+vim src/server/db/schema.ts
+
+# 2. Generate migration files
+npm run db:generate
+
+# 3. Review the generated SQL in ./drizzle
+cat drizzle/0001_*.sql
+
+# 4. Apply the migration
+npm run db:migrate
+```
+
+## Drizzle Studio
+
+Drizzle Studio provides a visual interface to manage your database:
+
+```bash
+npm run db:studio
+```
+
+This opens a web interface where you can:
+- Browse tables and data
+- Run queries
+- Edit records
+- View relationships
+- Inspect schema
+
+The studio is accessible at the URL shown in your terminal (typically `https://local.drizzle.studio`).
+
+## Seeding the database
+
+To populate your database with test data:
+
+```bash
+npm run db:seed
+```
+
+This script:
+- Runs `src/server/db/seed/index.ts`
+- Uses `@faker-js/faker` to generate realistic test data
+- Populates tables with sample records for testing
+
+<Note>
+  Seeding is optional and primarily useful for local development and testing.
+</Note>
+
+## Database connection
+
+The database connection string is configured via the `DATABASE_URL` environment variable:
+
+```bash
+DATABASE_URL="postgresql://postgres:password@localhost:5432/."
+```
+
+Format: `postgresql://[user]:[password]@[host]:[port]/[database]`
+
+- **User**: `postgres` (default)
+- **Password**: Set in your `.env` file
+- **Host**: `localhost` (for local development)
+- **Port**: `5432` (PostgreSQL default)
+- **Database**: `.` (configured in Docker container)
+
+## Common tasks
+
+<Tabs>
+  <Tab title="Reset database">
+    To completely reset your database:
+    
+    ```bash
+    # Stop and remove the container
+    docker stop hackwestern_db
+    docker rm hackwestern_db
+    
+    # Start fresh
+    npm run db:start
+    npm run db:migrate
+    npm run db:seed
+    ```
+  </Tab>
+
+  <Tab title="View logs">
+    To view PostgreSQL logs:
+    
+    ```bash
+    docker logs hackwestern_db
+    
+    # Follow logs in real-time
+    docker logs -f hackwestern_db
+    ```
+  </Tab>
+
+  <Tab title="Connect with psql">
+    To connect to the database with psql:
+    
+    ```bash
+    docker exec -it hackwestern_db psql -U postgres -d .
+    ```
+  </Tab>
+
+  <Tab title="Backup database">
+    To backup your database:
+    
+    ```bash
+    docker exec hackwestern_db pg_dump -U postgres . > backup.sql
+    ```
+    
+    To restore:
+    
+    ```bash
+    docker exec -i hackwestern_db psql -U postgres . < backup.sql
+    ```
+  </Tab>
+</Tabs>
+
+## Troubleshooting
+
+### Container already exists
+
+If you see "container already exists", the script will automatically start it:
+
+```bash
+$ npm run db:start
+Existing database container 'hackwestern_db' started
+```
+
+### Port 5432 already in use
+
+If another PostgreSQL instance is using port 5432:
+
+```bash
+# Stop the existing instance
+sudo systemctl stop postgresql
+
+# Or change the port in docker run command
+```
+
+### Connection refused
+
+If you can't connect to the database:
+
+1. Verify the container is running: `docker ps`
+2. Check the logs: `docker logs hackwestern_db`
+3. Verify your `DATABASE_URL` matches the container configuration
+4. Ensure Docker Desktop is running (on macOS/Windows)

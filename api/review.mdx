@@ -1,0 +1,227 @@
+---
+title: Review router
+description: Endpoints for managing application reviews by organizers
+---
+
+The review router handles all operations for organizers to review hacker applications. Each application requires 2 complete reviews before moving forward in the selection process.
+
+## Save review
+
+Saves or updates a review for an application. Reviews are automatically marked as complete if all required fields are filled.
+
+```typescript
+const result = await trpc.review.save.mutate({
+  applicantUserId: "user_123",
+  originalityRating: 75,
+  technicalityRating: 80,
+  passionRating: 85,
+  comments: "Strong technical background and clear passion for the field."
+});
+```
+
+<ParamField body="applicantUserId" type="string" required>
+  The user ID of the applicant being reviewed.
+</ParamField>
+
+<ParamField body="originalityRating" type="number" required>
+  Rating for originality/creativity (0-100). Set to 0 to delete the review.
+</ParamField>
+
+<ParamField body="technicalityRating" type="number" required>
+  Rating for technical ability (0-100). Set to 0 to delete the review.
+</ParamField>
+
+<ParamField body="passionRating" type="number" required>
+  Rating for passion/enthusiasm (0-100). Set to 0 to delete the review.
+</ParamField>
+
+<ParamField body="comments" type="string" optional>
+  Additional comments about the applicant.
+</ParamField>
+
+<ParamField body="completed" type="boolean">
+  Automatically set based on whether the review meets submission requirements (all ratings 1-100).
+</ParamField>
+
+<Note>
+  If all ratings are 0 and comments are empty, the review will be deleted instead of saved.
+</Note>
+
+## Refer applicant
+
+Marks an applicant for referral, bypassing the standard review process.
+
+```typescript
+const result = await trpc.review.referApplicant.mutate({
+  applicantUserId: "user_123"
+});
+```
+
+<ParamField body="applicantUserId" type="string" required>
+  The user ID of the applicant to refer.
+</ParamField>
+
+## Get reviews by organizer
+
+Retrieves all reviews created by the current organizer.
+
+```typescript
+const reviews = await trpc.review.getByOrganizer.useQuery();
+```
+
+<ResponseField name="reviews" type="array">
+  Array of reviews with associated applicant information.
+  
+  <ResponseField name="applicant" type="object">
+    <ResponseField name="id" type="string">
+      Applicant's user ID.
+    </ResponseField>
+    <ResponseField name="email" type="string">
+      Applicant's email address.
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="application" type="object">
+    <ResponseField name="firstName" type="string">
+      Applicant's first name.
+    </ResponseField>
+    <ResponseField name="lastName" type="string">
+      Applicant's last name.
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="originalityRating" type="number">
+    Originality rating (0-100).
+  </ResponseField>
+  
+  <ResponseField name="technicalityRating" type="number">
+    Technical ability rating (0-100).
+  </ResponseField>
+  
+  <ResponseField name="passionRating" type="number">
+    Passion rating (0-100).
+  </ResponseField>
+  
+  <ResponseField name="comments" type="string | null">
+    Review comments.
+  </ResponseField>
+  
+  <ResponseField name="completed" type="boolean">
+    Whether the review is complete.
+  </ResponseField>
+  
+  <ResponseField name="createdAt" type="Date">
+    When the review was created.
+  </ResponseField>
+  
+  <ResponseField name="updatedAt" type="Date">
+    When the review was last updated.
+  </ResponseField>
+</ResponseField>
+
+## Get next application ID
+
+Retrieves the user ID of the next application that needs review, prioritizing applications with fewer reviews.
+
+```typescript
+const nextId = await trpc.review.getNextId.useQuery({
+  skipId: "user_456" // optional: skip currently viewing application
+});
+```
+
+<ParamField path="skipId" type="string" optional>
+  User ID to skip (typically the application currently being viewed).
+</ParamField>
+
+<ResponseField name="userId" type="string">
+  The user ID of the next application to review. Returns applications in the following priority:
+  1. Any incomplete review by the current organizer
+  2. Applications with fewer than 2 completed reviews (excluding already reviewed by this organizer)
+  3. Non-referred applications only
+  4. Random selection among tied priorities
+  
+  Throws `NOT_FOUND` error if no applications match the criteria.
+</ResponseField>
+
+## Get review by ID
+
+Retrieves the current organizer's review for a specific applicant.
+
+```typescript
+const review = await trpc.review.getById.useQuery({
+  applicantId: "user_123"
+});
+```
+
+<ParamField path="applicantId" type="string" required>
+  The user ID of the applicant.
+</ParamField>
+
+<ResponseField name="review" type="object">
+  The review object. If no review exists, returns an empty review template with all ratings set to 0.
+  
+  <ResponseField name="applicantUserId" type="string">
+    The applicant's user ID.
+  </ResponseField>
+  
+  <ResponseField name="reviewerUserId" type="string">
+    The reviewer's user ID.
+  </ResponseField>
+  
+  <ResponseField name="originalityRating" type="number">
+    Originality rating (0 if no review exists).
+  </ResponseField>
+  
+  <ResponseField name="technicalityRating" type="number">
+    Technical rating (0 if no review exists).
+  </ResponseField>
+  
+  <ResponseField name="passionRating" type="number">
+    Passion rating (0 if no review exists).
+  </ResponseField>
+  
+  <ResponseField name="comments" type="string | null">
+    Review comments.
+  </ResponseField>
+  
+  <ResponseField name="completed" type="boolean">
+    Whether the review is complete.
+  </ResponseField>
+  
+  <ResponseField name="referral" type="boolean">
+    Whether this is a referral.
+  </ResponseField>
+</ResponseField>
+
+## Get review counts
+
+Retrieves the number of completed reviews per organizer.
+
+```typescript
+const counts = await trpc.review.getReviewCounts.useQuery();
+```
+
+<ResponseField name="reviewCounts" type="array">
+  Array of review counts sorted by count descending.
+  
+  <ResponseField name="reviewerId" type="string">
+    Organizer's user ID.
+  </ResponseField>
+  
+  <ResponseField name="reviewerName" type="string">
+    Organizer's name.
+  </ResponseField>
+  
+  <ResponseField name="reviewCount" type="number">
+    Number of completed reviews by this organizer.
+  </ResponseField>
+</ResponseField>
+
+## Review requirements
+
+For a review to be considered complete:
+- All three ratings must be between 1-100 (ratings cannot be 0)
+- Comments are optional
+- The system automatically sets `completed: true` when requirements are met
+
+Each application requires 2 completed reviews before progressing in the selection process.

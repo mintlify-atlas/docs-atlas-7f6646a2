@@ -1,0 +1,233 @@
+---
+title: QR code router
+description: Endpoints for generating digital wallet passes with QR codes for Apple Wallet and Google Wallet
+---
+
+The QR code router generates personalized digital wallet passes containing QR codes for hacker identification at Hack Western events.
+
+## Generate wallet pass
+
+Generates a digital wallet pass (Apple Wallet or Google Wallet) with an embedded QR code for the current user.
+
+```typescript
+const pass = await trpc.qrRouter.generate.mutate({
+  walletType: "APPLE"
+});
+```
+
+<ParamField body="walletType" type="enum" required>
+  The type of wallet pass to generate.
+  
+  Options:
+  - `APPLE` - Apple Wallet pass (.pkpass file)
+  - `GOOGLE` - Google Wallet pass (save URL)
+</ParamField>
+
+## Apple Wallet response
+
+<Tabs>
+  <Tab title="Apple Wallet">
+    ```typescript
+    const result = await trpc.qrRouter.generate.mutate({
+      walletType: "APPLE"
+    });
+    
+    // Result structure:
+    {
+      pkpass: "https://r2.example.com/wallet-passes/pass-123-user_abc.pkpass",
+      walletType: "APPLE"
+    }
+    ```
+    
+    <ResponseField name="pkpass" type="string">
+      Public URL to the .pkpass file stored in R2. This is the most recently generated pass for the user.
+    </ResponseField>
+    
+    <ResponseField name="walletType" type="'APPLE'">
+      Confirms wallet type.
+    </ResponseField>
+  </Tab>
+  
+  <Tab title="Google Wallet">
+    ```typescript
+    const result = await trpc.qrRouter.generate.mutate({
+      walletType: "GOOGLE"
+    });
+    
+    // Result structure:
+    {
+      qrCode: "data:image/png;base64,iVBORw0KGgoAAAANS...",
+      googleWalletUrl: "https://pay.google.com/gp/v/save/eyJhbGc...",
+      walletType: "GOOGLE"
+    }
+    ```
+    
+    <ResponseField name="qrCode" type="string">
+      Base64-encoded data URL of the QR code image (500x500px, high error correction).
+    </ResponseField>
+    
+    <ResponseField name="googleWalletUrl" type="string">
+      "Save to Google Wallet" URL. When opened, prompts the user to add the pass to Google Wallet.
+    </ResponseField>
+    
+    <ResponseField name="walletType" type="'GOOGLE'">
+      Confirms wallet type.
+    </ResponseField>
+  </Tab>
+</Tabs>
+
+## QR code format
+
+The QR code embedded in wallet passes contains the user's ID:
+
+```
+{userId}
+```
+
+For example: `user_2aB3cD4eF5gH6iJ7kL8m`
+
+## Apple Wallet pass details
+
+### Pass storage
+
+Apple Wallet passes are:
+- Pre-generated and stored in Cloudflare R2
+- Retrieved from R2 bucket under the `wallet-passes/` folder
+- Named with format: `pass-{timestamp}-{userId}.pkpass`
+- The most recent pass for each user is returned
+
+### Error: No pass found
+
+```json
+{
+  "code": "NOT_FOUND",
+  "message": "No pass found in R2 for user {userId}"
+}
+```
+
+This error occurs if no pre-generated pass exists for the user in R2 storage.
+
+## Google Wallet pass details
+
+### Pass structure
+
+Google Wallet passes are generated dynamically and include:
+
+<ParamField path="cardTitle" type="string">
+  "Hack Western 12"
+</ParamField>
+
+<ParamField path="header" type="string">
+  User's name (or "Attendee" if name is not set)
+</ParamField>
+
+<ParamField path="email" type="string">
+  User's email address (displayed in text modules)
+</ParamField>
+
+<ParamField path="role" type="string">
+  User type capitalized ("Hacker", "Organizer", etc.)
+</ParamField>
+
+<ParamField path="barcode" type="object">
+  QR code containing the user ID
+</ParamField>
+
+<ParamField path="heroImage" type="string">
+  Hack Western 12 banner image URL
+</ParamField>
+
+<ParamField path="logo" type="string">
+  Hack Western logo URL
+</ParamField>
+
+<ParamField path="hexBackgroundColor" type="string">
+  "#EBDFF7" (light purple)
+</ParamField>
+
+### Configuration requirements
+
+Google Wallet passes require the following environment variables:
+
+- `GOOGLE_WALLET_CLIENT_EMAIL` - Service account email
+- `GOOGLE_WALLET_PRIVATE_KEY` - Service account private key
+- `GOOGLE_WALLET_ISSUER_ID` - Google Wallet issuer ID
+
+### Google Wallet class
+
+Passes use a shared Generic Pass class:
+- Class ID: `{issuerId}.hackwestern12_generic_v3`
+- The class is created if it doesn't exist, or updated if it does
+- Review status: `UNDER_REVIEW`
+
+### Google Wallet object
+
+Each user gets a unique pass object:
+- Object ID: `{issuerId}.{sanitizedUserId}` (non-alphanumeric characters replaced with underscores)
+- State: `ACTIVE`
+- Objects are created or updated on each generation request
+
+## Error handling
+
+<Tabs>
+  <Tab title="User not found">
+    ```json
+    {
+      "code": "NOT_FOUND",
+      "message": "User not found in database. Please verify your email before generating a Wallet Pass."
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Missing credentials">
+    ```json
+    {
+      "code": "INTERNAL_SERVER_ERROR",
+      "message": "Google Wallet credentials not configured. Please set GOOGLE_WALLET_CLIENT_EMAIL and GOOGLE_WALLET_PRIVATE_KEY environment variables."
+    }
+    ```
+  </Tab>
+  
+  <Tab title="No Apple pass found">
+    ```json
+    {
+      "code": "NOT_FOUND",
+      "message": "No pass found in R2 for user user_123"
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Usage example
+
+```typescript
+import { trpc } from "~/utils/api";
+
+function WalletPassButton() {
+  const generatePass = trpc.qrRouter.generate.useMutation({
+    onSuccess: (data) => {
+      if (data.walletType === "APPLE") {
+        // Redirect to .pkpass file
+        window.location.href = data.pkpass;
+      } else if (data.walletType === "GOOGLE") {
+        // Open Google Wallet save URL
+        window.open(data.googleWalletUrl, "_blank");
+      }
+    },
+    onError: (error) => {
+      console.error("Failed to generate pass:", error.message);
+    }
+  });
+  
+  return (
+    <>
+      <button onClick={() => generatePass.mutate({ walletType: "APPLE" })}>
+        Add to Apple Wallet
+      </button>
+      <button onClick={() => generatePass.mutate({ walletType: "GOOGLE" })}>
+        Add to Google Wallet
+      </button>
+    </>
+  );
+}
+```

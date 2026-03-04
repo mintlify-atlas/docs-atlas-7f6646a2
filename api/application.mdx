@@ -1,0 +1,293 @@
+---
+title: Application router
+description: Endpoints for managing hacker applications to Hack Western
+---
+
+The application router handles all operations related to hacker applications, including creating, retrieving, updating, and submitting applications.
+
+## Get application
+
+Retrieves the current user's application. Supports optional field selection to fetch only specific columns.
+
+```typescript
+const application = await trpc.application.get.useQuery({
+  fields: ["firstName", "lastName", "email", "status"]
+});
+```
+
+<ParamField path="fields" type="string[]" optional>
+  Optional array of specific application fields to fetch. If omitted, fetches all fields.
+  
+  Available fields:
+  - Basic info: `userId`, `createdAt`, `updatedAt`, `status`
+  - Avatar: `avatarColour`, `avatarFace`, `avatarLeftHand`, `avatarRightHand`, `avatarHat`
+  - Personal: `firstName`, `lastName`, `age`, `phoneNumber`, `countryOfResidence`
+  - Academic: `school`, `levelOfStudy`, `major`, `attendedBefore`, `numOfHackathons`
+  - Essays: `question1`, `question2`, `question3`
+  - Links: `resumeLink`, `githubLink`, `linkedInLink`, `otherLink`
+  - Agreements: `agreeCodeOfConduct`, `agreeShareWithSponsors`, `agreeShareWithMLH`, `agreeEmailsFromMLH`, `agreeWillBe18`
+  - Demographics: `underrepGroup`, `gender`, `ethnicity`, `sexualOrientation`
+  - Canvas: `canvasData`
+</ParamField>
+
+<ResponseField name="application" type="object | null">
+  The user's application data, or null if no application exists.
+  
+  Note: `githubLink` and `linkedInLink` are returned with URL prefixes stripped (substring after character 19 and 24 respectively).
+</ResponseField>
+
+## Get application by ID
+
+Retrieves a specific applicant's full application. Requires organizer permissions.
+
+```typescript
+const application = await trpc.application.getById.useQuery({
+  applicantId: "user_123"
+});
+```
+
+<ParamField path="applicantId" type="string" required>
+  The user ID of the applicant whose application to retrieve.
+</ParamField>
+
+<ResponseField name="application" type="object">
+  The complete application data for the specified applicant.
+</ResponseField>
+
+## Get all applicants
+
+Retrieves a list of all applicants with pending review status. Requires organizer permissions.
+
+```typescript
+const applicants = await trpc.application.getAllApplicants.useQuery();
+```
+
+<ResponseField name="applicants" type="array">
+  Array of applicant summaries.
+  
+  <ResponseField name="userId" type="string">
+    The applicant's user ID.
+  </ResponseField>
+  
+  <ResponseField name="name" type="string">
+    Full name formatted as "firstName lastName".
+  </ResponseField>
+  
+  <ResponseField name="email" type="string">
+    The applicant's email address.
+  </ResponseField>
+</ResponseField>
+
+## Save application
+
+Saves or updates the current user's application. This endpoint performs an upsert operation - creates a new application if none exists, or updates the existing one.
+
+```typescript
+const result = await trpc.application.save.mutate({
+  firstName: "Jane",
+  lastName: "Doe",
+  age: 20,
+  phoneNumber: "+1-555-123-4567",
+  countryOfResidence: "Canada",
+  school: "University of Western Ontario",
+  githubLink: "janedoe",
+  linkedInLink: "in/janedoe",
+  resumeLink: "https://example.com/resume.pdf",
+  agreeCodeOfConduct: true,
+  agreeShareWithMLH: true,
+  agreeShareWithSponsors: true,
+  agreeWillBe18: true
+});
+```
+
+<ParamField body="firstName" type="string" optional>
+  Applicant's first name.
+</ParamField>
+
+<ParamField body="lastName" type="string" optional>
+  Applicant's last name.
+</ParamField>
+
+<ParamField body="age" type="number" optional>
+  Applicant's age.
+</ParamField>
+
+<ParamField body="phoneNumber" type="string" optional>
+  Contact phone number.
+</ParamField>
+
+<ParamField body="countryOfResidence" type="string" optional>
+  Country where the applicant currently resides.
+</ParamField>
+
+<ParamField body="school" type="string" optional>
+  Educational institution name.
+</ParamField>
+
+<ParamField body="levelOfStudy" type="string" optional>
+  Current level of education (e.g., "Undergraduate", "Graduate").
+</ParamField>
+
+<ParamField body="major" type="string" optional>
+  Field of study or major.
+</ParamField>
+
+<ParamField body="attendedBefore" type="boolean" optional>
+  Whether the applicant has attended Hack Western before.
+</ParamField>
+
+<ParamField body="numOfHackathons" type="string" optional>
+  Number of previous hackathons attended.
+</ParamField>
+
+<ParamField body="question1" type="string" optional>
+  Response to essay question 1 (30-150 words).
+</ParamField>
+
+<ParamField body="question2" type="string" optional>
+  Response to essay question 2 (30-150 words).
+</ParamField>
+
+<ParamField body="question3" type="string" optional>
+  Response to essay question 3 (30-150 words).
+</ParamField>
+
+<ParamField body="resumeLink" type="string" optional>
+  URL to applicant's resume.
+</ParamField>
+
+<ParamField body="githubLink" type="string" optional>
+  GitHub username (without "https://github.com/" prefix).
+</ParamField>
+
+<ParamField body="linkedInLink" type="string" optional>
+  LinkedIn profile path (without "https://www.linkedin.com/" prefix).
+</ParamField>
+
+<ParamField body="otherLink" type="string" optional>
+  Any other relevant link (portfolio, personal website, etc.).
+</ParamField>
+
+<ParamField body="avatarColour" type="string" optional>
+  Avatar customization - color selection.
+</ParamField>
+
+<ParamField body="avatarFace" type="string" optional>
+  Avatar customization - face style.
+</ParamField>
+
+<ParamField body="avatarLeftHand" type="string" optional>
+  Avatar customization - left hand item.
+</ParamField>
+
+<ParamField body="avatarRightHand" type="string" optional>
+  Avatar customization - right hand item.
+</ParamField>
+
+<ParamField body="avatarHat" type="string" optional>
+  Avatar customization - hat selection.
+</ParamField>
+
+<ParamField body="canvasData" type="object" optional>
+  Canvas drawing data with paths, timestamp, and version.
+</ParamField>
+
+<ParamField body="agreeCodeOfConduct" type="boolean" optional>
+  Agreement to MLH Code of Conduct.
+</ParamField>
+
+<ParamField body="agreeShareWithMLH" type="boolean" optional>
+  Consent to share application with MLH.
+</ParamField>
+
+<ParamField body="agreeShareWithSponsors" type="boolean" optional>
+  Consent to share information with event sponsors.
+</ParamField>
+
+<ParamField body="agreeWillBe18" type="boolean" optional>
+  Confirmation of being 18+ years old by event date.
+</ParamField>
+
+<ParamField body="agreeEmailsFromMLH" type="boolean" optional>
+  Opt-in to receive emails from MLH.
+</ParamField>
+
+<ParamField body="underrepGroup" type="string" optional>
+  Optional demographic question about underrepresented group membership.
+</ParamField>
+
+<ParamField body="gender" type="string" optional>
+  Optional demographic - gender identity.
+</ParamField>
+
+<ParamField body="ethnicity" type="string" optional>
+  Optional demographic - ethnicity.
+</ParamField>
+
+<ParamField body="sexualOrientation" type="string" optional>
+  Optional demographic - sexual orientation.
+</ParamField>
+
+## Submit application
+
+Submits the current user's application for review. Validates that all required fields are complete before updating status to `PENDING_REVIEW`.
+
+```typescript
+const result = await trpc.application.submit.mutate();
+```
+
+This mutation validates the existing application against the submission schema, which requires:
+- Complete basic information (name, phone, country, age 18-99)
+- Complete academic information (school, level of study, major, hackathon history)
+- Three essay responses (30-150 words each)
+- Valid resume link
+- All required agreement checkboxes
+
+## Get application statistics
+
+Retrieves counts of applications grouped by status. Requires organizer permissions.
+
+```typescript
+const stats = await trpc.application.getAppStats.useQuery();
+```
+
+<ResponseField name="applicationStats" type="array">
+  Array of status counts.
+  
+  <ResponseField name="status" type="string">
+    Application status: `IN_PROGRESS`, `PENDING_REVIEW`, `IN_REVIEW`, `ACCEPTED`, `REJECTED`, `WAITLISTED`, or `DECLINED`.
+  </ResponseField>
+  
+  <ResponseField name="count" type="number">
+    Number of applications with this status.
+  </ResponseField>
+</ResponseField>
+
+## Bulk update status by emails
+
+Updates application status for multiple applicants identified by email addresses. Requires organizer permissions.
+
+```typescript
+const result = await trpc.application.bulkUpdateStatusByEmails.mutate({
+  emails: ["user1@example.com", "user2@example.com"],
+  status: "ACCEPTED"
+});
+```
+
+<ParamField body="emails" type="string[]" required>
+  Array of email addresses for applicants to update. Must contain at least one valid email.
+</ParamField>
+
+<ParamField body="status" type="string" required>
+  The new status to set. One of: `IN_PROGRESS`, `PENDING_REVIEW`, `IN_REVIEW`, `ACCEPTED`, `REJECTED`, `WAITLISTED`, `DECLINED`.
+</ParamField>
+
+<ResponseField name="result" type="object">
+  <ResponseField name="matched" type="number">
+    Number of users found matching the provided emails.
+  </ResponseField>
+  
+  <ResponseField name="updated" type="number">
+    Number of applications successfully updated.
+  </ResponseField>
+</ResponseField>

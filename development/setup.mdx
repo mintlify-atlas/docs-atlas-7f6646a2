@@ -1,0 +1,182 @@
+---
+title: Development setup
+description: Set up your local development environment for the Hack Western platform
+---
+
+This guide will help you set up your local development environment for the Hack Western platform.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Operating System**: Linux, macOS, or Windows with [Windows Subsystem for Linux](https://learn.microsoft.com/en-us/windows/wsl/about)
+- **Node.js**: Version 21 or higher with npm
+  - We recommend using [nvm](https://github.com/nvm-sh/nvm) to manage Node.js versions
+- **Docker**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) or an alternative like [colima](https://github.com/abiosoft/colima)
+- **Git**: Installed with GitHub account configured
+- **Browser**: Modern browser (Chrome 108+, Edge 108+, Firefox 108+, Safari 16+)
+- **Editor**: Modern text editor like VSCode or Neovim with:
+  - TypeScript LSP
+  - Prettier (configured to run on save)
+  - ESLint (configured to run on save/commit)
+
+## Installation
+
+<Steps>
+  <Step title="Clone the repository">
+    Clone the Hack Western repository and navigate into it:
+    
+    ```bash
+    git clone https://github.com/hackwestern/hackwestern.git
+    cd hackwestern
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    Install all required npm packages:
+    
+    ```bash
+    npm install
+    ```
+  </Step>
+
+  <Step title="Configure environment variables">
+    Get a copy of the `.env` file from a web lead, or create one from the example:
+    
+    ```bash
+    cp .env.example .env
+    ```
+    
+    Generate your `NEXTAUTH_SECRET`:
+    
+    ```bash
+    openssl rand -base64 32
+    ```
+    
+    Copy the output and add it to your `.env` file:
+    
+    ```bash
+    NEXTAUTH_SECRET="your-generated-secret-here"
+    ```
+    
+    See the [environment variables](/development/environment) guide for detailed configuration.
+  </Step>
+
+  <Step title="Start the database">
+    Start the PostgreSQL database using Docker:
+    
+    ```bash
+    npm run db:start
+    ```
+    
+    This script will:
+    - Check if Docker is installed
+    - Create a new PostgreSQL container named `hackwestern_db`
+    - Generate a secure password if you're using the default
+    - Start the container on port 5432
+  </Step>
+
+  <Step title="Run database migrations">
+    Apply the database schema to your PostgreSQL database:
+    
+    ```bash
+    npm run db:migrate
+    ```
+  </Step>
+
+  <Step title="Seed the database (optional)">
+    Optionally seed the database with test data:
+    
+    ```bash
+    npm run db:seed
+    ```
+    
+    This will populate your database with fake data for testing.
+  </Step>
+
+  <Step title="Start the development server">
+    Start the Next.js development server with Turbopack:
+    
+    ```bash
+    npm run dev
+    ```
+    
+    The application will be available at [http://localhost:3000](http://localhost:3000)
+  </Step>
+</Steps>
+
+## Development scripts
+
+The following npm scripts are available for development:
+
+<CodeGroup>
+```bash Development
+# Start the development server with Turbopack
+npm run dev
+
+# Start development server with production environment
+npm run dev:prod
+
+# Start development with React Scan for performance analysis
+npm run scan
+```
+
+```bash Database
+# Start the PostgreSQL Docker container
+npm run db:start
+
+# Open Drizzle Studio to manage your database
+npm run db:studio
+
+# Generate migration files from schema changes
+npm run db:generate
+
+# Apply migrations to the database
+npm run db:migrate
+
+# Seed the database with test data
+npm run db:seed
+```
+
+```bash Build & Test
+# Build the application for production
+npm run build
+
+# Start the production server
+npm start
+
+# Run tests with Vitest
+npm run test
+
+# Lint the codebase
+npm run lint
+```
+</CodeGroup>
+
+## Technology stack
+
+The Hack Western platform is built with:
+
+- **[Next.js](https://nextjs.org)** - React framework for production
+- **[React](https://react.dev)** - UI library
+- **[TypeScript](https://www.typescriptlang.org/)** - Type-safe JavaScript
+- **[NextAuth.js](https://next-auth.js.org)** - Authentication
+- **[tRPC](https://trpc.io)** - End-to-end typesafe APIs
+- **[Drizzle ORM](https://orm.drizzle.team)** - TypeScript ORM
+- **[PostgreSQL](https://www.postgresql.org/)** - Database
+- **[Tailwind CSS](https://tailwindcss.com)** - Utility-first CSS
+- **[Docker](https://docs.docker.com/)** - Containerization
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Database management" icon="database" href="/development/database">
+    Learn how to manage your database with Drizzle
+  </Card>
+  <Card title="Environment variables" icon="key" href="/development/environment">
+    Configure environment variables for your setup
+  </Card>
+  <Card title="Testing" icon="flask" href="/development/testing">
+    Write and run tests with Vitest
+  </Card>
+</CardGroup>

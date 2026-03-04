@@ -1,0 +1,472 @@
+---
+title: Scavenger hunt router
+description: Endpoints for managing the scavenger hunt game system with points, items, rewards, and leaderboards
+---
+
+The scavenger hunt router manages a points-based game where hackers scan QR codes at events to earn points and redeem rewards. Organizers can scan items for hackers and track participation.
+
+## Get all scavenger hunt items
+
+Retrieves all scavenger hunt items, including deleted items with future deletion dates.
+
+```typescript
+const items = await trpc.scavengerHunt.getAllScavengerHuntItems.useQuery();
+```
+
+<ResponseField name="items" type="array">
+  Array of scavenger hunt items sorted by code.
+  
+  <ResponseField name="id" type="number">
+    Unique item ID.
+  </ResponseField>
+  
+  <ResponseField name="code" type="string">
+    Item code/identifier.
+  </ResponseField>
+  
+  <ResponseField name="description" type="string">
+    Item description.
+  </ResponseField>
+  
+  <ResponseField name="points" type="number">
+    Points awarded for scanning this item.
+  </ResponseField>
+  
+  <ResponseField name="deletedAt" type="Date | null">
+    Soft deletion timestamp. Items are hidden if this date is in the past.
+  </ResponseField>
+</ResponseField>
+
+## Get scavenger hunt item by code
+
+Retrieves a specific item by its code. Respects soft deletion.
+
+```typescript
+const item = await trpc.scavengerHunt.getScavengerHuntItem.useQuery({
+  code: "opening_ceremony_att"
+});
+```
+
+<ParamField path="code" type="string" required>
+  The item's unique code.
+</ParamField>
+
+<ResponseField name="item" type="object">
+  The scavenger hunt item. Throws `NOT_FOUND` if item doesn't exist or is soft-deleted.
+</ResponseField>
+
+## Get scavenger hunt item by ID
+
+Retrieves a specific item by its numeric ID.
+
+```typescript
+const item = await trpc.scavengerHunt.getScavengerHuntItemById.useQuery({
+  id: 1
+});
+```
+
+<ParamField path="id" type="number" required>
+  The item's numeric ID.
+</ParamField>
+
+<ResponseField name="item" type="object">
+  The scavenger hunt item.
+</ResponseField>
+
+## Scan item
+
+Records a scan of a scavenger hunt item for a user, awarding points. Only organizers can scan items.
+
+```typescript
+const result = await trpc.scavengerHunt.scan.mutate({
+  userId: "user_123",
+  itemCode: "workshop_intro_ws"
+});
+```
+
+<ParamField body="userId" type="string" required>
+  The user ID of the hacker scanning the item.
+</ParamField>
+
+<ParamField body="itemId" type="number" optional>
+  The item's numeric ID (preferred over itemCode).
+</ParamField>
+
+<ParamField body="itemCode" type="string" optional>
+  The item's code. Either `itemId` or `itemCode` must be provided.
+</ParamField>
+
+<ResponseField name="result" type="object">
+  <ResponseField name="success" type="boolean">
+    Returns `true` if scan was successful.
+  </ResponseField>
+  
+  <ResponseField name="message" type="string">
+    Success message.
+  </ResponseField>
+</ResponseField>
+
+<Note>
+  Users cannot scan the same item twice. Throws `BAD_REQUEST` error with message "Item already scanned" if attempted.
+</Note>
+
+## Delete scavenger hunt item
+
+Soft-deletes a scavenger hunt item by setting its `deletedAt` timestamp. Requires organizer permissions.
+
+```typescript
+const result = await trpc.scavengerHunt.deleteScavengerHuntItem.mutate({
+  itemId: 5
+});
+```
+
+<ParamField body="itemId" type="number" required>
+  The ID of the item to delete.
+</ParamField>
+
+## Get points
+
+Retrieves the current user's scavenger hunt points.
+
+```typescript
+const points = await trpc.scavengerHunt.getPoints.useQuery();
+```
+
+<ResponseField name="points" type="object">
+  <ResponseField name="earned" type="number | null">
+    Total points earned (before any redemptions).
+  </ResponseField>
+  
+  <ResponseField name="balance" type="number | null">
+    Current point balance available to spend.
+  </ResponseField>
+</ResponseField>
+
+## Get points by user ID
+
+Retrieves a specific user's points. Requires organizer permissions.
+
+```typescript
+const points = await trpc.scavengerHunt.getPointsByUserId.useQuery({
+  requestedUserId: "user_123"
+});
+```
+
+<ParamField path="requestedUserId" type="string" required>
+  The user ID to check points for.
+</ParamField>
+
+<ResponseField name="points" type="object">
+  Same structure as `getPoints`.
+</ResponseField>
+
+## Get all rewards
+
+Retrieves all available scavenger hunt rewards. Requires organizer permissions.
+
+```typescript
+const rewards = await trpc.scavengerHunt.getAllRewards.useQuery();
+```
+
+<ResponseField name="rewards" type="array">
+  Array of rewards sorted by name.
+  
+  <ResponseField name="id" type="number">
+    Unique reward ID.
+  </ResponseField>
+  
+  <ResponseField name="name" type="string">
+    Reward name.
+  </ResponseField>
+  
+  <ResponseField name="description" type="string">
+    Reward description.
+  </ResponseField>
+  
+  <ResponseField name="costPoints" type="number">
+    Points required to redeem.
+  </ResponseField>
+  
+  <ResponseField name="quantity" type="number | null">
+    Available quantity. `null` means unlimited.
+  </ResponseField>
+</ResponseField>
+
+## Get reward by ID
+
+Retrieves a specific reward. Requires organizer permissions.
+
+```typescript
+const reward = await trpc.scavengerHunt.getRewardById.useQuery({
+  id: 3
+});
+```
+
+<ParamField path="id" type="number" required>
+  The reward's numeric ID.
+</ParamField>
+
+<ResponseField name="reward" type="object">
+  The reward details.
+</ResponseField>
+
+## Redeem reward
+
+Redeems a reward for the current user, deducting points and tracking the redemption.
+
+```typescript
+const result = await trpc.scavengerHunt.redeem.mutate({
+  rewardId: 3
+});
+```
+
+<ParamField body="rewardId" type="number" required>
+  The ID of the reward to redeem.
+</ParamField>
+
+<ResponseField name="result" type="object">
+  <ResponseField name="success" type="boolean">
+    Returns `true` if redemption was successful.
+  </ResponseField>
+  
+  <ResponseField name="message" type="string">
+    Success message.
+  </ResponseField>
+</ResponseField>
+
+<Note>
+  Redemptions fail if:
+  - User doesn't have enough points
+  - Reward is out of stock (when quantity tracking is enabled)
+  - Reward doesn't exist
+</Note>
+
+## Redeem reward for user
+
+Redeems a reward on behalf of a user. Requires organizer permissions and includes quantity checking.
+
+```typescript
+const result = await trpc.scavengerHunt.redeemForUser.mutate({
+  userId: "user_123",
+  rewardId: 3
+});
+```
+
+<ParamField body="userId" type="string" required>
+  The user ID to redeem the reward for.
+</ParamField>
+
+<ParamField body="rewardId" type="number" required>
+  The ID of the reward to redeem.
+</ParamField>
+
+<ResponseField name="result" type="object">
+  <ResponseField name="success" type="boolean">
+    Returns `true` if redemption was successful.
+  </ResponseField>
+  
+  <ResponseField name="message" type="string">
+    Success message.
+  </ResponseField>
+  
+  <ResponseField name="user" type="object">
+    User information for confirmation.
+    
+    <ResponseField name="id" type="string">
+      User ID.
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      User's name.
+    </ResponseField>
+    
+    <ResponseField name="email" type="string">
+      User's email.
+    </ResponseField>
+  </ResponseField>
+  
+  <ResponseField name="reward" type="object">
+    Updated reward information.
+    
+    <ResponseField name="id" type="number">
+      Reward ID.
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Reward name.
+    </ResponseField>
+    
+    <ResponseField name="quantity" type="number | null">
+      Remaining quantity after redemption.
+    </ResponseField>
+    
+    <ResponseField name="costPoints" type="number">
+      Cost in points.
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+## Get scans
+
+Retrieves the current user's scan and redemption history, combined and sorted by date.
+
+```typescript
+const history = await trpc.scavengerHunt.getScans.useQuery();
+```
+
+<ResponseField name="history" type="array">
+  Combined array of scans (positive points) and redemptions (negative points), sorted by most recent first.
+  
+  <ResponseField name="id" type="string">
+    Unique entry ID (format: `scan-{userId}-{itemId}` or `redemption-{userId}-{rewardId}-{timestamp}`).
+  </ResponseField>
+  
+  <ResponseField name="type" type="'scan' | 'redemption'">
+    Entry type.
+  </ResponseField>
+  
+  <ResponseField name="itemId" type="number" optional>
+    Item ID (for scans only).
+  </ResponseField>
+  
+  <ResponseField name="rewardId" type="number" optional>
+    Reward ID (for redemptions only).
+  </ResponseField>
+  
+  <ResponseField name="itemCode" type="string | null">
+    Item code for scans, `null` for redemptions.
+  </ResponseField>
+  
+  <ResponseField name="itemDescription" type="string">
+    Description of the item or reward.
+  </ResponseField>
+  
+  <ResponseField name="points" type="number">
+    Points value (positive for scans, negative for redemptions).
+  </ResponseField>
+  
+  <ResponseField name="createdAt" type="Date">
+    When the scan or redemption occurred.
+  </ResponseField>
+</ResponseField>
+
+## Get redemptions
+
+Retrieves the current user's reward redemptions.
+
+```typescript
+const redemptions = await trpc.scavengerHunt.getRedemptions.useQuery();
+```
+
+<ResponseField name="redemptions" type="array">
+  Array of redemption records.
+</ResponseField>
+
+## Get redemptions by user ID
+
+Retrieves a specific user's redemptions. Requires organizer permissions.
+
+```typescript
+const redemptions = await trpc.scavengerHunt.getRedemptionByUserId.useQuery({
+  requestedUserId: "user_123"
+});
+```
+
+<ParamField path="requestedUserId" type="string" required>
+  The user ID to get redemptions for.
+</ParamField>
+
+## Get user by ID
+
+Retrieves basic user information. Requires organizer permissions.
+
+```typescript
+const user = await trpc.scavengerHunt.getUserById.useQuery({
+  userId: "user_123"
+});
+```
+
+<ParamField path="userId" type="string" required>
+  The user ID to retrieve.
+</ParamField>
+
+<ResponseField name="user" type="object">
+  <ResponseField name="id" type="string">
+    User ID.
+  </ResponseField>
+  
+  <ResponseField name="name" type="string">
+    User's name.
+  </ResponseField>
+  
+  <ResponseField name="email" type="string">
+    User's email.
+  </ResponseField>
+</ResponseField>
+
+## Get all scans
+
+Retrieves all scans across all users with filtering. Requires organizer permissions.
+
+```typescript
+const scans = await trpc.scavengerHunt.getAllScans.useQuery({
+  filter: "workshops"
+});
+```
+
+<ParamField path="filter" type="string" optional>
+  Filter scans by category. Defaults to "all".
+  
+  Available filters:
+  - `all` - All scans
+  - `meals` - Items ending with `_meal`
+  - `workshops` - Items ending with `_ws`
+  - `sponsor_workshops` - Items ending with `_sw`
+  - `activities` - Items ending with `_act`
+  - `attendance` - Items ending with `_att`
+  - `wins` - Items ending with `_win`
+  - `bonus` - Items ending with `_bonus`
+</ParamField>
+
+<ResponseField name="scans" type="array">
+  Array of scans sorted by most recent first.
+  
+  <ResponseField name="id" type="string">
+    Scan ID (format: `{userId}-{itemId}`).
+  </ResponseField>
+  
+  <ResponseField name="hackerName" type="string">
+    Hacker's name, email, or user ID.
+  </ResponseField>
+  
+  <ResponseField name="event" type="string">
+    Item description or code.
+  </ResponseField>
+  
+  <ResponseField name="scanner" type="string">
+    Name or email of the organizer who performed the scan.
+  </ResponseField>
+  
+  <ResponseField name="day" type="string">
+    Formatted date (e.g., "Nov 21").
+  </ResponseField>
+  
+  <ResponseField name="time" type="string">
+    Formatted time (e.g., "2:30 PM").
+  </ResponseField>
+  
+  <ResponseField name="createdAt" type="Date">
+    Raw timestamp.
+  </ResponseField>
+</ResponseField>
+
+## Item code conventions
+
+Scavenger hunt item codes follow naming conventions with suffixes:
+- `_meal` - Meal events
+- `_ws` - Workshops
+- `_sw` - Sponsor workshops
+- `_act` - Activities
+- `_att` - Attendance tracking
+- `_win` - Competition wins
+- `_bonus` - Bonus point opportunities

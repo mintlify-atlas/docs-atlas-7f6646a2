@@ -1,0 +1,129 @@
+---
+title: QR code generation
+description: Generate personal QR codes for hacker identification and scavenger hunt scanning
+---
+
+Each hacker receives a unique QR code that serves as their digital identity throughout the hackathon. Organizers scan these codes to record attendance, award scavenger hunt points, and check in hackers at events.
+
+## QR code format
+
+The QR code encodes the hacker's user ID as a simple string:
+
+```typescript
+const qrCodeData = userId; // e.g., "clx4k9j2k0000uxyz123456"
+```
+
+QR codes are generated with:
+- Width: 500px
+- Error correction level: High (H) for reliable scanning even if partially obscured
+- Format: Data URL (base64-encoded PNG)
+
+## Use cases
+
+### Scavenger hunt scanning
+
+Organizers scan hacker QR codes at events to award scavenger hunt points:
+
+<Steps>
+  <Step title="Select event">
+    Organizer navigates to the scan interface and selects which event/activity to record.
+  </Step>
+  
+  <Step title="Scan QR code">
+    Organizer uses their device camera to scan the hacker's QR code.
+  </Step>
+  
+  <Step title="Award points">
+    The system looks up the user by ID, verifies they haven't already scanned this item, and awards points.
+  </Step>
+</Steps>
+
+### Event check-in
+
+QR codes can be scanned at venue entrances, workshops, and meals to track attendance and participation.
+
+### Prize redemption
+
+Hackers present their QR code when redeeming scavenger hunt rewards at prize stations.
+
+## Accessing QR codes
+
+Hackers can access their QR code through:
+
+1. **Dashboard view**: QR code displayed directly in the web application
+2. **Apple Wallet pass**: Generated wallet pass includes the QR code for offline access
+3. **Google Wallet pass**: Generated wallet pass includes the QR code with additional event details
+
+## API endpoint
+
+### Generate QR code and wallet pass
+
+```typescript
+qr.generate({ walletType: 'APPLE' | 'GOOGLE' })
+```
+
+Generates a QR code and wallet pass for the current user.
+
+**Apple Wallet response:**
+```typescript
+{
+  pkpass: string,        // URL to .pkpass file
+  walletType: 'APPLE'
+}
+```
+
+**Google Wallet response:**
+```typescript
+{
+  qrCode: string,              // Base64 data URL of QR code PNG
+  googleWalletUrl: string,     // URL to add pass to Google Wallet
+  walletType: 'GOOGLE'
+}
+```
+
+## Implementation details
+
+### QR code library
+
+QR codes are generated using the `qrcode` npm package:
+
+```typescript
+import QRCode from 'qrcode';
+
+const qrBase64 = await QRCode.toDataURL(userId, {
+  width: 500,
+  errorCorrectionLevel: 'H'
+});
+```
+
+### Verification requirement
+
+Users must verify their email before generating QR codes. This ensures only confirmed attendees can receive scannable codes.
+
+### User lookup
+
+When scanning, organizers' devices decode the QR code to extract the user ID, then query the database to:
+- Verify the user exists
+- Load user details (name, email, type)
+- Check if they've already scanned the current item
+- Award points if valid
+
+### Error handling
+
+The system handles several error cases:
+- User not found in database
+- User hasn't verified email
+- Item already scanned (duplicate)
+- Invalid QR code format
+- Network errors during scanning
+
+## Scanner interface
+
+Organizers use a dedicated scanning interface accessible at `/scavenger` (organizer-only):
+
+1. View all available scavenger hunt items organized by category
+2. Select the event to scan for
+3. Open camera scanner
+4. Scan hacker QR codes
+5. Receive immediate feedback on successful/failed scans
+6. View scan history and statistics
